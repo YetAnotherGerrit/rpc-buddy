@@ -1,0 +1,66 @@
+id: io.github.YetAnotherGerrit.RpcBuddy
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+base: io.qt.PySide.BaseApp
+base-version: '6.11'
+command: rpc-buddy
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Discord API/CDN (game list), later Steam Web API
+  - --share=network
+  # Discord IPC sockets (official clients)
+  - --filesystem=xdg-run/app/com.discordapp.Discord:ro
+  - --filesystem=xdg-run/app/com.discordapp.DiscordCanary:ro
+  - --filesystem=xdg-run/snap.discord:ro
+  # Steam logs (native and Flatpak Steam), read-only
+  - --filesystem=~/.local/share/Steam/logs:ro
+  - --filesystem=~/.var/app/com.valvesoftware.Steam/.local/share/Steam/logs:ro
+  # Music players (MPRIS)
+  - --talk-name=org.mpris.MediaPlayer2.*
+  # Tray icon (inside the sandbox the app's PID is always 2)
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=org.kde.StatusNotifierItem-2-2
+
+build-options:
+  env:
+    BASEAPP_REMOVE_WEBENGINE: '1'
+
+cleanup-commands:
+  - /app/cleanup-BaseApp.sh
+
+modules:
+  - name: python-deps
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --no-deps --no-build-isolation --prefix=${FLATPAK_DEST} *.whl
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/05/61/69bf5ed7393fc314b7129d509ec1bc9622ce98d7300a780d52fa3b95bc88/pypresence-4.6.2-py3-none-any.whl
+        sha256: 6587e525a663699ca5fb8621ea147a9c264c135650c50afbccd7b5d9b4e28dc0
+      - type: file
+        url: https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl
+        sha256: 188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90
+
+  - name: rpc-buddy
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --no-deps --no-build-isolation --prefix=${FLATPAK_DEST} .
+      - install -Dm644 flatpak/${FLATPAK_ID}.desktop -t ${FLATPAK_DEST}/share/applications
+      - install -Dm644 flatpak/${FLATPAK_ID}.metainfo.xml -t ${FLATPAK_DEST}/share/metainfo
+      - install -Dm644 src/rpc_buddy/resources/icon.svg
+        ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
+    sources:
+      - type: dir
+        path: ..
+        skip:
+          - .venv
+          - .git
+          - .flatpak-builder
+          - build-dir
+          - repo
+          - build

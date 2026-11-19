@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.YetAnotherGerrit.RpcBuddy</id>
+  <name>RPC Buddy</name>
+  <summary>Show what you play and listen to as Discord Rich Presence</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.YetAnotherGerrit">
+    <name>YetAnotherGerrit</name>
+  </developer>
+  <description>
+    <p>
+      RPC Buddy shows the Steam game you are playing as your Discord activity —
+      with the game's official name and artwork — even when Discord runs as a
+      Flatpak and cannot detect games itself.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.YetAnotherGerrit.RpcBuddy.desktop</launchable>
+  <url type="homepage">https://github.com/YetAnotherGerrit/rpc-buddy</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-11-19">
+      <description>
+        <p>First development version.</p>
+      </description>
+    </release>
+  </releases>
+</component>

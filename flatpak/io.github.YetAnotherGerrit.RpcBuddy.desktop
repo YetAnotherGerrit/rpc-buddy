@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=RPC Buddy
+Comment=Show what you play and listen to as Discord Rich Presence
+Exec=rpc-buddy
+Icon=io.github.YetAnotherGerrit.RpcBuddy
+Terminal=false
+Categories=Utility;Network;
+Keywords=Discord;Rich Presence;Steam;Game;Music;Status;
+StartupNotify=false
