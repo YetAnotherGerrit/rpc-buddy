@@ -115,3 +115,28 @@ def test_module_setting_is_saved(tmp_path):
     engine._set_module_setting("dummy", "volume", 7)
     assert engine.state().modules[0].values["volume"] == 7
     assert Config.load(tmp_path / "config.toml").module_settings("dummy")["volume"] == 7
+
+
+def test_setup_done_enables_autostart_and_reports_errors(tmp_path):
+    engine, _ = make_engine(tmp_path)
+    calls = []
+
+    async def fake_autostart(enabled):
+        calls.append(enabled)
+        if len(calls) == 2:
+            raise RuntimeError("denied")
+
+    engine._apply_autostart = fake_autostart
+
+    async def go():
+        engine._set_setup_done()
+        await asyncio.sleep(0)
+        engine._set_autostart(False)
+        await asyncio.sleep(0)
+
+    asyncio.run(go())
+    assert calls == [True, False]
+    state = engine.state()
+    assert state.autostart is False
+    assert state.autostart_error == "denied"
+    assert Config.load(tmp_path / "config.toml").autostart is False

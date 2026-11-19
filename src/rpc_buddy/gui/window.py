@@ -181,6 +181,12 @@ class MainWindow(QMainWindow):
         status_layout.addWidget(self._discord)
         status_layout.addWidget(self._shown)
         status_layout.addWidget(self._pause)
+        self._autostart = QCheckBox("Start with my desktop session")
+        self._autostart.toggled.connect(engine.set_autostart)
+        status_layout.addWidget(self._autostart)
+        self._autostart_error = _wrapping_label()
+        self._autostart_error.hide()
+        status_layout.addWidget(self._autostart_error)
         self._layout.addWidget(status)
 
         self._modules_anchor = self._layout.count()
@@ -220,6 +226,14 @@ class MainWindow(QMainWindow):
         self._pause.blockSignals(True)
         self._pause.setChecked(state.paused)
         self._pause.blockSignals(False)
+        self._autostart.blockSignals(True)
+        self._autostart.setChecked(state.autostart)
+        self._autostart.blockSignals(False)
+        self._autostart_error.setVisible(bool(state.autostart_error))
+        if state.autostart_error:
+            self._autostart_error.setText(
+                style.status_html(style.WARNING, f"Autostart: {state.autostart_error}")
+            )
 
         for i, m in enumerate(state.modules):
             box = self._module_boxes.get(m.id)

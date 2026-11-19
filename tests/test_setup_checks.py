@@ -30,6 +30,7 @@ def state(discord, steam=OK, music=OK):
         modules=(module("steam", steam), module("mpris", music)),
         hidden=(),
         recent=(),
+        autostart=True,
     )
 
 
@@ -38,7 +39,7 @@ NOT_REACHABLE = Health(HealthState.NEEDS_SETUP, "Discord not reachable")
 
 def test_everything_ok():
     checks = run_checks(state(Health(HealthState.OK, "Discord found")), FLATPAK)
-    assert [c.state for c in checks] == [CheckState.OK] * 4
+    assert [c.state for c in checks] == [CheckState.OK] * 5
 
 
 def test_discord_flatpak_not_running_just_says_start_it():
@@ -78,3 +79,16 @@ def test_disabled_module_is_info():
 
 def test_no_tray_is_info_not_error():
     assert tray_check(NO_DISCORD_DIR).state is CheckState.INFO
+
+
+def test_autostart_row():
+    from dataclasses import replace
+
+    from rpc_buddy.setup_checks import autostart_check
+
+    base = state(Health(HealthState.OK))
+    assert autostart_check(replace(base, autostart=True, setup_done=True)).state is CheckState.OK
+    assert autostart_check(replace(base, autostart=True, setup_done=False)).state is CheckState.INFO
+    assert autostart_check(replace(base, autostart=False)).state is CheckState.INFO
+    failed = replace(base, autostart=True, autostart_error="denied")
+    assert autostart_check(failed).state is CheckState.WARNING

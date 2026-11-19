@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rpc_buddy.activity import Activity, Health, HealthState
+from rpc_buddy.autostart import set_autostart
 from rpc_buddy.config import Config
 from rpc_buddy.detectable import DetectableCache
 from rpc_buddy.discord import DiscordSink
@@ -64,6 +65,9 @@ class EngineState:
     modules: tuple[ModuleStatus, ...]
     hidden: tuple[Item, ...]
     recent: tuple[Item, ...]  # seen this session, newest first, not hidden
+    autostart: bool = False  # the user wants autostart
+    autostart_error: str = ""
+    setup_done: bool = True
 
     @property
     def shown(self) -> list[ModuleStatus]:
@@ -96,6 +100,8 @@ class Engine:
         self._stopping: asyncio.Event | None = None
         self._ready = threading.Event()
         self._thread: threading.Thread | None = None
+        self._autostart_error = ""
+        self._apply_autostart = set_autostart  # replaceable in tests
 
     # --- lifecycle --------------------------------------------------------
 
@@ -150,6 +156,9 @@ class Engine:
 
     def set_setup_done(self) -> None:
         self._call(self._set_setup_done)
+
+    def set_autostart(self, enabled: bool) -> None:
+        self._call(self._set_autostart, enabled)
 
     def _call(self, fn, *args) -> None:
         if self._loop is None:
@@ -218,6 +227,22 @@ class Engine:
         if not self.config.setup_done:
             self.config.setup_done = True
             self._save_config()
+            if self.config.autostart:
+                asyncio.ensure_future(self._autostart(True))
+
+    def _set_autostart(self, enabled: bool) -> None:
+        self.config.autostart = enabled
+        self._save_config()
+        asyncio.ensure_future(self._autostart(enabled))
+
+    async def _autostart(self, enabled: bool) -> None:
+        try:
+            await self._apply_autostart(enabled)
+            self._autostart_error = ""
+        except Exception as e:
+            log.warning("Could not change autostart: %s", e)
+            self._autostart_error = str(e) or type(e).__name__
+        self._emit()
 
     def _save_config(self) -> None:
         try:
@@ -303,6 +328,9 @@ class Engine:
             modules=tuple(modules),
             hidden=hidden,
             recent=recent,
+            autostart=self.config.autostart,
+            autostart_error=self._autostart_error,
+            setup_done=self.config.setup_done,
         )
 
     def _emit(self) -> None:

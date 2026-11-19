@@ -69,7 +69,11 @@ as Discord Rich Presence through Discord's local IPC socket.
 | Steam detection | Logs → Steam Web API (opt-in) |
 | Game vs. music | Both published in parallel; Discord shows both, game wins the status line — no own priority logic |
 | Unknown games | Not shown in v1 |
-| Autostart | On by default, start into tray |
+| Autostart | On by default (applied when the first-run setup check is closed with Done), starts with `--background` into the tray; Flatpak: XDG Background portal |
+| Hide list | Games per Steam app, music per source (player/service); hiding only in the main window; recently seen items (session only, max 20) are offered |
+| Setup check | First-run dialog, reopenable from the main window |
+| Native (non-Flatpak) Discord | Not requested by default; the setup check offers a copyable `flatpak override` and the note to start Discord first |
+| Main window size | Fixed default 600×860 for Full HD screens, capped at 90% of smaller screens |
 
 ## 5. Architecture
 
@@ -217,13 +221,17 @@ standard setup needs no user action.
 ## 9. GUI
 
 - **Tray** (primary on KDE): current activity, pause toggle, module toggles,
-  "Open rpc-buddy", "Quit".
-- **Main window**: status page (Discord connected? what is shown, preview),
-  modules page (toggle + generated settings per module), hide list, log view.
-- **Setup wizard** (first run, and whenever a module reports "needs setup"):
-  shows green checks for everything auto-detected; for anything missing,
-  shows a copyable `flatpak override --user …` command and Flatseal steps.
-  The app cannot change its own sandbox permissions.
+  "Open RPC Buddy…", "Quit"; left click opens the main window.
+- **Main window**: status (Discord, what is shown, pause, autostart), one box
+  per module (enable toggle, health with hints, settings form generated from
+  the module's `settings`), hide list ("Seen recently" / "Hidden"), "Run
+  setup check…", "Quit". Closing hides it to the tray (quits if no tray).
+- **Setup check** (first run, reopenable): Discord, Steam games, music, tray
+  icon, autostart — coloured status and copyable `flatpak override --user …`
+  commands where something is missing. The app cannot change its own sandbox
+  permissions. Logic in `setup_checks.py` (Qt-free, tested).
+- **Single instance**: a second launch asks the running one to show its
+  window (local socket in `$XDG_RUNTIME_DIR/app/<app-id>/`).
 
 ## 10. Development workflow
 
@@ -261,11 +269,11 @@ standard setup needs no user action.
 Also verified: Discord's detectable list maps Steam games to their official
 Discord app (Steam app id → Discord application id, with cover art).
 
-**Phase 1** — core, DiscordSink, Steam module, DetectableCache, tray with
-status and toggles.
+**Phase 1 ✅** — core, DiscordSink, Steam module, DetectableCache, tray with
+status and toggles, first Flatpak build.
 
-**Phase 2** — MPRIS module, router rules (pause, hide list), main window,
-setup wizard, autostart.
+**Phase 2 ✅** — MPRIS module, router rules (pause, hide list), main window,
+setup check, autostart.
 
 **Phase 3** — polish, weeks of daily use, then GitHub public, then Flathub.
 

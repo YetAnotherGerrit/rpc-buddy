@@ -18,6 +18,8 @@ DEFAULTS: dict[str, Any] = {
         "paused": False,
         # Set once the first-run setup check was closed with "Done"
         "setup_done": False,
+        # Start with the desktop session (applied when setup is done / changed)
+        "autostart": True,
         # Hidden games / music sources: [{key = "steam:<appid>", label = "…"}]
         "hidden": [],
     },
@@ -100,6 +102,14 @@ class Config:
     @setup_done.setter
     def setup_done(self, value: bool) -> None:
         self.data["general"]["setup_done"] = value
+
+    @property
+    def autostart(self) -> bool:
+        return bool(self.data["general"].get("autostart", True))
+
+    @autostart.setter
+    def autostart(self, value: bool) -> None:
+        self.data["general"]["autostart"] = value
 
     @property
     def hidden(self) -> list[dict[str, str]]:

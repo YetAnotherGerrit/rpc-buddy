@@ -116,5 +116,32 @@ def tray_check(env: Environment) -> Check:
     )
 
 
+def autostart_check(state: EngineState) -> Check:
+    title = "Start with your desktop"
+    if state.autostart_error:
+        return Check(
+            title,
+            CheckState.WARNING,
+            f"Could not set up autostart: {state.autostart_error}",
+            note="You can retry with the checkbox in the main window.",
+        )
+    if not state.autostart:
+        return Check(title, CheckState.INFO, "Off. You can switch it on in the main window.")
+    if not state.setup_done:
+        return Check(
+            title,
+            CheckState.INFO,
+            "RPC Buddy will start quietly in the background when you log in "
+            "(set up when you click Done). You can change this in the main window.",
+        )
+    return Check(title, CheckState.OK, "RPC Buddy starts quietly in the background.")
+
+
 def run_checks(state: EngineState, env: Environment) -> list[Check]:
-    return [discord_check(state, env), steam_check(state), music_check(state), tray_check(env)]
+    return [
+        discord_check(state, env),
+        steam_check(state),
+        music_check(state),
+        tray_check(env),
+        autostart_check(state),
+    ]
