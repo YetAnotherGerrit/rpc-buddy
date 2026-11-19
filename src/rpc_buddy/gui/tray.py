@@ -1,11 +1,12 @@
 """Tray icon — the main way to interact with RPC Buddy on KDE Plasma."""
 
 import logging
+from collections.abc import Callable
 from importlib.resources import files
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QAction, QIcon
-from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from rpc_buddy import APP_ID, APP_NAME
 from rpc_buddy.activity import HealthState
@@ -26,20 +27,28 @@ class EngineBridge(QObject):
 
 
 class Tray(QObject):
-    def __init__(self, app: QApplication, engine: Engine, bridge: EngineBridge):
+    def __init__(
+        self, engine: Engine, open_window: Callable[[], None], quit_app: Callable[[], None]
+    ):
         super().__init__()
-        self._app = app
         self._engine = engine
+        self._open_window = open_window
+        self._quit_app = quit_app
         self._menu = QMenu()
         self._icon = QSystemTrayIcon(app_icon())
         self._icon.setContextMenu(self._menu)
         self._icon.setToolTip(APP_NAME)
-        bridge.state_changed.connect(self.on_state)
-        if not QSystemTrayIcon.isSystemTrayAvailable():
-            log.warning("No system tray available — RPC Buddy keeps running in the background")
+        self._icon.activated.connect(self._on_activated)
         self._icon.show()
 
-    @Slot(object)
+    @staticmethod
+    def available() -> bool:
+        return QSystemTrayIcon.isSystemTrayAvailable()
+
+    def _on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self._open_window()
+
     def on_state(self, state: EngineState) -> None:
         self._menu.clear()
 
@@ -67,12 +76,11 @@ class Tray(QObject):
             if m.enabled and m.health.state in (HealthState.NEEDS_SETUP, HealthState.ERROR):
                 label += f" — ⚠ {m.health.message}"
             action = QAction(label, self._menu, checkable=True, checked=m.enabled)
-            if m.health.hint and m.enabled and not m.health.ok:
-                action.setToolTip(m.health.hint)
             action.toggled.connect(lambda on, mid=m.id: self._engine.set_module_enabled(mid, on))
             self._menu.addAction(action)
 
         self._menu.addSeparator()
-        self._menu.addAction("Quit", self._app.quit)
+        self._menu.addAction(f"Open {APP_NAME}…", self._open_window)
+        self._menu.addAction("Quit", self._quit_app)
 
         self._icon.setToolTip(f"{APP_NAME}\n" + "\n".join(lines))

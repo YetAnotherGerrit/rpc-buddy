@@ -75,3 +75,43 @@ def test_disable_module_removes_its_activity(tmp_path):
     asyncio.run(go())
     assert sink.desired == {}
     assert engine.state().modules[0].health.state is HealthState.DISABLED
+
+
+def test_hidden_item_is_not_published(tmp_path):
+    from rpc_buddy.engine import Item
+
+    engine, sink = make_engine(tmp_path)
+    item = Item("steam:1000001", "Example Quest")
+    engine.publish("dummy", Activity(client_id="game"), "Playing Example Quest", item)
+    assert sink.desired == {"game": Activity(client_id="game")}
+    assert engine.state().recent == (item,)
+
+    engine._set_hidden(item, True)
+    assert sink.desired == {}
+    state = engine.state()
+    assert state.shown == []
+    assert state.modules[0].hidden
+    assert state.hidden == (item,)
+    assert state.recent == ()  # hidden items are not offered again
+    assert Config.load(tmp_path / "config.toml").hidden_keys == {"steam:1000001"}
+
+    engine._set_hidden(item, False)
+    assert sink.desired == {"game": Activity(client_id="game")}
+
+
+def test_recent_is_newest_first_and_bounded(tmp_path):
+    from rpc_buddy.engine import MAX_RECENT, Item
+
+    engine, _ = make_engine(tmp_path)
+    for i in range(MAX_RECENT + 5):
+        engine.publish("dummy", Activity(client_id="x"), "", Item(f"steam:{i}", f"Game {i}"))
+    recent = engine.state().recent
+    assert len(recent) == MAX_RECENT
+    assert recent[0].key == f"steam:{MAX_RECENT + 4}"
+
+
+def test_module_setting_is_saved(tmp_path):
+    engine, _ = make_engine(tmp_path)
+    engine._set_module_setting("dummy", "volume", 7)
+    assert engine.state().modules[0].values["volume"] == 7
+    assert Config.load(tmp_path / "config.toml").module_settings("dummy")["volume"] == 7

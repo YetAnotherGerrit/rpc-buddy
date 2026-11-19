@@ -1,17 +1,35 @@
 """Base class for activity sources ("modules").
 
-To add a module: subclass :class:`Module`, implement :meth:`Module.run`, and
-add the class to ``rpc_buddy.modules.MODULES``.
+To add a module: subclass :class:`Module`, implement :meth:`Module.run`,
+declare its ``settings`` (the main window builds a form from them), add its
+defaults to ``rpc_buddy.config.DEFAULTS`` and the class to
+``rpc_buddy.modules.MODULES``.
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from rpc_buddy.activity import Activity, Health
 
 if TYPE_CHECKING:
     from rpc_buddy.detectable import DetectableCache
     from rpc_buddy.engine import Engine
+
+
+@dataclass(frozen=True)
+class Setting:
+    """A user-editable module setting, stored in the module's config section."""
+
+    key: str
+    label: str
+    kind: Literal["text", "choice", "int"]
+    help: str = ""
+    choices: tuple[tuple[str, str], ...] = ()  # (value, label) for kind="choice"
+    minimum: int = 0
+    maximum: int = 3600
+    suffix: str = ""  # e.g. " s" for kind="int"
+    placeholder: str = ""  # for kind="text"
 
 
 class ModuleContext:
@@ -26,9 +44,22 @@ class ModuleContext:
     def detectable(self) -> "DetectableCache":
         return self._engine.detectable
 
-    def publish(self, activity: Activity | None, summary: str = "") -> None:
-        """Show ``activity`` (or nothing, if None). ``summary`` is shown in the UI."""
-        self._engine.publish(self._module_id, activity, summary)
+    def publish(
+        self,
+        activity: Activity | None,
+        summary: str = "",
+        hide_key: str | None = None,
+        hide_label: str | None = None,
+    ) -> None:
+        """Show ``activity`` (or nothing, if None).
+
+        ``summary`` is shown in the UI. ``hide_key`` (e.g. ``"steam:<appid>"``)
+        lets the user hide this kind of activity; ``hide_label`` names it.
+        """
+        from rpc_buddy.engine import Item
+
+        item = Item(hide_key, hide_label or hide_key) if hide_key else None
+        self._engine.publish(self._module_id, activity, summary, item)
 
     def set_health(self, health: Health) -> None:
         self._engine.set_health(self._module_id, health)
@@ -37,6 +68,7 @@ class ModuleContext:
 class Module(ABC):
     id: ClassVar[str]
     name: ClassVar[str]
+    settings: ClassVar[tuple[Setting, ...]] = ()
 
     def __init__(self, ctx: ModuleContext):
         self.ctx = ctx

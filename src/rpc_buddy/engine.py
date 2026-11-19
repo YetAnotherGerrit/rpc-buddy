@@ -1,9 +1,9 @@
 """The headless core: runs modules, applies rules, feeds Discord.
 
 The engine runs its own asyncio loop (in a worker thread when used with the
-GUI). The public methods ``set_paused``, ``set_module_enabled`` and ``stop``
-are thread-safe; state changes are reported through ``on_state``, which is
-called from the engine's thread.
+GUI). The public ``set_*`` methods and ``stop`` are thread-safe; state
+changes are reported through ``on_state``, which is called from the
+engine's thread.
 """
 
 import asyncio
@@ -12,18 +12,36 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from rpc_buddy.activity import Activity, Health, HealthState
 from rpc_buddy.config import Config
 from rpc_buddy.detectable import DetectableCache
 from rpc_buddy.discord import DiscordSink
-from rpc_buddy.module import Module, ModuleContext
+from rpc_buddy.module import Module, ModuleContext, Setting
 from rpc_buddy.modules import MODULES
 from rpc_buddy.paths import cache_dir
 
 log = logging.getLogger(__name__)
 
 MODULE_RESTART_DELAY = 30.0
+MAX_RECENT = 20
+
+
+@dataclass(frozen=True)
+class Item:
+    """Something that can be hidden, e.g. a game or a music source."""
+
+    key: str  # e.g. "steam:1000001", "mpris:Deezer"
+    label: str  # shown in the UI
+
+
+@dataclass(frozen=True)
+class Publication:
+    timestamp: float
+    activity: Activity | None
+    summary: str
+    item: Item | None
 
 
 @dataclass(frozen=True)
@@ -34,6 +52,9 @@ class ModuleStatus:
     health: Health
     activity: Activity | None
     summary: str
+    hidden: bool
+    settings: tuple[Setting, ...]
+    values: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -41,13 +62,15 @@ class EngineState:
     discord: Health
     paused: bool
     modules: tuple[ModuleStatus, ...]
+    hidden: tuple[Item, ...]
+    recent: tuple[Item, ...]  # seen this session, newest first, not hidden
 
     @property
     def shown(self) -> list[ModuleStatus]:
         """Modules whose activity is currently published."""
         if self.paused:
             return []
-        return [m for m in self.modules if m.activity is not None]
+        return [m for m in self.modules if m.activity is not None and not m.hidden]
 
 
 class Engine:
@@ -65,7 +88,8 @@ class Engine:
         self.sink = sink or DiscordSink()
         self.sink.on_status = lambda _h: self._emit()
         self._module_classes = {cls.id: cls for cls in (modules or MODULES)}
-        self._published: dict[str, tuple[float, Activity | None, str]] = {}
+        self._published: dict[str, Publication] = {}
+        self._recent: dict[str, Item] = {}  # insertion order = oldest first
         self._health: dict[str, Health] = {}
         self._tasks: dict[str, asyncio.Task] = {}
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -118,6 +142,12 @@ class Engine:
     def set_module_enabled(self, module_id: str, enabled: bool) -> None:
         self._call(self._set_module_enabled, module_id, enabled)
 
+    def set_module_setting(self, module_id: str, key: str, value: Any) -> None:
+        self._call(self._set_module_setting, module_id, key, value)
+
+    def set_hidden(self, item: Item, hidden: bool) -> None:
+        self._call(self._set_hidden, item, hidden)
+
     def _call(self, fn, *args) -> None:
         if self._loop is None:
             raise RuntimeError("Engine is not running")
@@ -125,8 +155,15 @@ class Engine:
 
     # --- called by modules (engine thread) ---------------------------------
 
-    def publish(self, module_id: str, activity: Activity | None, summary: str) -> None:
-        self._published[module_id] = (time.monotonic(), activity, summary)
+    def publish(
+        self, module_id: str, activity: Activity | None, summary: str, item: Item | None = None
+    ) -> None:
+        self._published[module_id] = Publication(time.monotonic(), activity, summary, item)
+        if activity is not None and item is not None:
+            self._recent.pop(item.key, None)
+            self._recent[item.key] = item
+            while len(self._recent) > MAX_RECENT:
+                self._recent.pop(next(iter(self._recent)))
         self._recompute()
 
     def set_health(self, module_id: str, health: Health) -> None:
@@ -151,6 +188,28 @@ class Engine:
             self._emit()
         elif not enabled and module_id in self._tasks:
             asyncio.ensure_future(self._stop_module(module_id))
+
+    def _set_module_setting(self, module_id: str, key: str, value: Any) -> None:
+        settings = self.config.module_settings(module_id)
+        if settings.get(key) == value:
+            return
+        settings[key] = value
+        self._save_config()
+        if module_id in self._tasks:
+            asyncio.ensure_future(self._restart_module(module_id))
+        else:
+            self._emit()
+
+    async def _restart_module(self, module_id: str) -> None:
+        await self._stop_module(module_id)
+        if self.config.module_enabled(module_id):
+            self._start_module(module_id)
+            self._emit()
+
+    def _set_hidden(self, item: Item, hidden: bool) -> None:
+        self.config.set_hidden(item.key, item.label, hidden)
+        self._save_config()
+        self._recompute()
 
     def _save_config(self) -> None:
         try:
@@ -191,36 +250,51 @@ class Engine:
         self._health[module_id] = Health(HealthState.DISABLED)
         self._recompute()
 
+    def _is_hidden(self, pub: Publication) -> bool:
+        return pub.item is not None and pub.item.key in self.config.hidden_keys
+
     def _recompute(self) -> None:
         desired: dict[str, Activity] = {}
         if not self.config.paused:
             # Several sources may share a Discord application: newest wins.
             newest: dict[str, float] = {}
-            for ts, activity, _ in self._published.values():
-                if activity is None:
+            for pub in self._published.values():
+                activity = pub.activity
+                if activity is None or self._is_hidden(pub):
                     continue
-                if ts >= newest.get(activity.client_id, -1.0):
-                    newest[activity.client_id] = ts
+                if pub.timestamp >= newest.get(activity.client_id, -1.0):
+                    newest[activity.client_id] = pub.timestamp
                     desired[activity.client_id] = activity
         self.sink.set_desired(desired)
         self._emit()
 
     def state(self) -> EngineState:
         modules = []
+        empty = Publication(0.0, None, "", None)
         for module_id, cls in self._module_classes.items():
-            _, activity, summary = self._published.get(module_id, (0.0, None, ""))
+            pub = self._published.get(module_id, empty)
             modules.append(
                 ModuleStatus(
                     id=module_id,
                     name=cls.name,
                     enabled=self.config.module_enabled(module_id),
                     health=self._health.get(module_id, Health(HealthState.STARTING)),
-                    activity=activity,
-                    summary=summary,
+                    activity=pub.activity,
+                    summary=pub.summary,
+                    hidden=self._is_hidden(pub),
+                    settings=tuple(cls.settings),
+                    values=dict(self.config.module_settings(module_id)),
                 )
             )
+        hidden = tuple(Item(h["key"], h["label"]) for h in self.config.hidden)
+        hidden_keys = self.config.hidden_keys
+        recent = tuple(i for i in reversed(self._recent.values()) if i.key not in hidden_keys)
         return EngineState(
-            discord=self.sink.status, paused=self.config.paused, modules=tuple(modules)
+            discord=self.sink.status,
+            paused=self.config.paused,
+            modules=tuple(modules),
+            hidden=hidden,
+            recent=recent,
         )
 
     def _emit(self) -> None:

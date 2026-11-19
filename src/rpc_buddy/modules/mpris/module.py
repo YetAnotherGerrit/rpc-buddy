@@ -10,7 +10,7 @@ from dbus_fast.aio import MessageBus
 
 from rpc_buddy import RPC_BUDDY_CLIENT_ID
 from rpc_buddy.activity import Activity, ActivityType, Health, HealthState, StatusDisplay
-from rpc_buddy.module import Module
+from rpc_buddy.module import Module, Setting
 from rpc_buddy.modules.mpris.players import BUS_PREFIX, source_name, track_from_metadata
 from rpc_buddy.modules.mpris.selector import NowPlaying, PlayerSnapshot, Selector
 
@@ -44,6 +44,30 @@ def _fit(text: str | None, limit: int = 128) -> str | None:
 class MprisModule(Module):
     id = "mpris"
     name = "Music"
+    settings = (
+        Setting(
+            "status_display",
+            "Status line shows",
+            "choice",
+            choices=(("state", "Artist"), ("name", "Player / service"), ("details", "Track")),
+            help="What Discord shows next to your name in member lists.",
+        ),
+        Setting(
+            "pause_timeout",
+            "Keep paused tracks for",
+            "int",
+            minimum=0,
+            maximum=3600,
+            suffix=" s",
+        ),
+        Setting(
+            "client_id",
+            "Discord application ID",
+            "text",
+            placeholder="Default: RPC Buddy",
+            help="Optional: the ID of your own app from the Discord Developer Portal.",
+        ),
+    )
 
     def __init__(self, ctx):
         super().__init__(ctx)
@@ -149,7 +173,13 @@ class MprisModule(Module):
         if activity == self._published:
             return
         self._published = activity
-        self.ctx.publish(activity, summary)
+        source = now.source if now else None
+        self.ctx.publish(
+            activity,
+            summary,
+            hide_key=f"mpris:{source}" if source else None,
+            hide_label=f"{source} (music)" if source else None,
+        )
         message = f"{now.source}: {summary}" if now else "Nothing playing"
         self.ctx.set_health(Health(HealthState.OK, message))
 

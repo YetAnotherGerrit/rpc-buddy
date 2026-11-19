@@ -16,6 +16,8 @@ log = logging.getLogger(__name__)
 DEFAULTS: dict[str, Any] = {
     "general": {
         "paused": False,
+        # Hidden games / music sources: [{key = "steam:<appid>", label = "…"}]
+        "hidden": [],
     },
     "modules": {
         "steam": {"enabled": True},
@@ -88,6 +90,20 @@ class Config:
     @paused.setter
     def paused(self, value: bool) -> None:
         self.data["general"]["paused"] = value
+
+    @property
+    def hidden(self) -> list[dict[str, str]]:
+        return self.data["general"].setdefault("hidden", [])
+
+    @property
+    def hidden_keys(self) -> set[str]:
+        return {h["key"] for h in self.hidden}
+
+    def set_hidden(self, key: str, label: str, hidden: bool) -> None:
+        items = [h for h in self.hidden if h["key"] != key]
+        if hidden:
+            items.append({"key": key, "label": label})
+        self.data["general"]["hidden"] = items
 
     def module_settings(self, module_id: str) -> dict[str, Any]:
         return self.data["modules"].setdefault(module_id, {"enabled": True})

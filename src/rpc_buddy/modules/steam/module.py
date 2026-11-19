@@ -126,5 +126,7 @@ class SteamModule(Module):
                 start=game.started,
             ),
             summary=f"Playing {discord_game.name}",
+            hide_key=f"steam:{game.appid}",
+            hide_label=discord_game.name,
         )
         self.ctx.set_health(Health(HealthState.OK, f"Playing {discord_game.name}"))

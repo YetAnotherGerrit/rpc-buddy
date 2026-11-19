@@ -38,11 +38,13 @@ def run_headless(config: Config) -> int:
     return 0
 
 
-def run_gui(config: Config) -> int:
+def run_gui(config: Config, background: bool) -> int:
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
 
+    from rpc_buddy.gui.single import InstanceServer, notify_running_instance
     from rpc_buddy.gui.tray import EngineBridge, Tray, app_icon
+    from rpc_buddy.gui.window import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("rpc-buddy")
@@ -52,11 +54,27 @@ def run_gui(config: Config) -> int:
     app.setWindowIcon(app_icon())
     app.setQuitOnLastWindowClosed(False)
 
+    if notify_running_instance():
+        log.info("Already running, showing the existing window")
+        return 0
+    instance = InstanceServer()
+
+    has_tray = Tray.available()
+    if not has_tray:
+        log.warning("No system tray available, closing the window quits RPC Buddy")
+
     bridge = EngineBridge()
     engine = Engine(config, on_state=bridge.state_changed.emit)
-    tray = Tray(app, engine, bridge)  # noqa: F841 - keep a reference
+    window = MainWindow(engine, quit_app=app.quit, keep_running=has_tray)
+    tray = Tray(engine, open_window=window.show_and_raise, quit_app=app.quit)
+    bridge.state_changed.connect(window.on_state)
+    bridge.state_changed.connect(tray.on_state)
+    instance.show_requested.connect(window.show_and_raise)
+
     engine.start_in_thread()
     app.aboutToQuit.connect(engine.stop)
+    if not (background and has_tray):
+        window.show_and_raise()
 
     # Let Python handle Ctrl+C while Qt's event loop is running.
     signal.signal(signal.SIGINT, lambda *_: app.quit())
@@ -71,6 +89,9 @@ def run_gui(config: Config) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="rpc-buddy", description=APP_NAME)
     parser.add_argument("--headless", action="store_true", help="run without GUI")
+    parser.add_argument(
+        "--background", action="store_true", help="start in the tray without opening the window"
+    )
     parser.add_argument("--debug", action="store_true", help="verbose logging")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = parser.parse_args(argv)
@@ -85,4 +106,4 @@ def main(argv: list[str] | None = None) -> int:
 
     config = Config.load()
     log.info("%s %s, config: %s", APP_NAME, __version__, config.path)
-    return run_headless(config) if args.headless else run_gui(config)
+    return run_headless(config) if args.headless else run_gui(config, args.background)
