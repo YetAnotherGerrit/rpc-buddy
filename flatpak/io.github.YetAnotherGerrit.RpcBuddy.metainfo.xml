@@ -14,6 +14,10 @@
       with the game's official name and artwork — even when Discord runs as a
       Flatpak and cannot detect games itself.
     </p>
+    <p>
+      It also shows the music you listen to in players such as Deezer or TIDAL,
+      including music websites in your browser.
+    </p>
   </description>
   <launchable type="desktop-id">io.github.YetAnotherGerrit.RpcBuddy.desktop</launchable>
   <url type="homepage">https://github.com/YetAnotherGerrit/rpc-buddy</url>

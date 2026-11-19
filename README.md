@@ -27,12 +27,22 @@ itself.
 
 ## Requirements
 
-- Linux desktop with Flatpak (tested on KDE Plasma; GNOME works without a
-  tray icon unless the AppIndicator extension is installed)
+- Linux desktop with Flatpak (tested on KDE Plasma; GNOME should work, without
+  a tray icon unless the AppIndicator extension is installed — not tested yet)
 - The official Discord client — the Flatpak `com.discordapp.Discord` works
   out of the box; Canary and Snap should as well (untested). A Discord installed without
   Flatpak needs one extra permission (see Troubleshooting).
 - Steam (native or Flatpak) for game detection
+
+## Install a test build
+
+If you got a `rpc-buddy.flatpak` file:
+
+```bash
+flatpak install --user rpc-buddy.flatpak
+```
+
+A newer file is installed the same way and replaces the old version.
 
 ## Install (local build)
 
@@ -101,6 +111,14 @@ uv run rpc-buddy                      # run with window and tray icon
 uv run rpc-buddy --headless --debug   # run without GUI, verbose logging
 uv run pytest                         # tests
 uv run ruff check . && uv run ruff format --check .
+```
+
+Create a single-file bundle for testers (see DESIGN.md §8.3):
+
+```bash
+flatpak-builder --repo=repo --force-clean build-dir flatpak/io.github.YetAnotherGerrit.RpcBuddy.yml
+flatpak build-bundle repo rpc-buddy.flatpak io.github.YetAnotherGerrit.RpcBuddy \
+    --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
 The design, decisions and test results are in [DESIGN.md](DESIGN.md);
