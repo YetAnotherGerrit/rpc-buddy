@@ -9,6 +9,7 @@ import sys
 from rpc_buddy import APP_ID, APP_NAME, __version__
 from rpc_buddy.config import Config
 from rpc_buddy.engine import Engine, EngineState
+from rpc_buddy.setup_checks import detect_environment
 
 log = logging.getLogger("rpc_buddy")
 
@@ -42,6 +43,7 @@ def run_gui(config: Config, background: bool) -> int:
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
 
+    from rpc_buddy.gui.setup import SetupDialog
     from rpc_buddy.gui.single import InstanceServer, notify_running_instance
     from rpc_buddy.gui.tray import EngineBridge, Tray, app_icon
     from rpc_buddy.gui.window import MainWindow
@@ -65,16 +67,30 @@ def run_gui(config: Config, background: bool) -> int:
 
     bridge = EngineBridge()
     engine = Engine(config, on_state=bridge.state_changed.emit)
-    window = MainWindow(engine, quit_app=app.quit, keep_running=has_tray)
+    setup = SetupDialog(
+        None, environment=lambda: detect_environment(has_tray), on_done=engine.set_setup_done
+    )
+
+    def open_setup() -> None:
+        setup.show()
+        setup.raise_()
+        setup.activateWindow()
+
+    window = MainWindow(engine, quit_app=app.quit, keep_running=has_tray, open_setup=open_setup)
     tray = Tray(engine, open_window=window.show_and_raise, quit_app=app.quit)
     bridge.state_changed.connect(window.on_state)
     bridge.state_changed.connect(tray.on_state)
+    bridge.state_changed.connect(setup.on_state)
     instance.show_requested.connect(window.show_and_raise)
 
+    first_run = not config.setup_done
     engine.start_in_thread()
     app.aboutToQuit.connect(engine.stop)
     if not (background and has_tray):
         window.show_and_raise()
+    if first_run:
+        # Give the modules a moment to report their status before showing it.
+        QTimer.singleShot(1500, open_setup)
 
     # Let Python handle Ctrl+C while Qt's event loop is running.
     signal.signal(signal.SIGINT, lambda *_: app.quit())

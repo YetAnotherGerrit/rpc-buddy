@@ -148,6 +148,9 @@ class Engine:
     def set_hidden(self, item: Item, hidden: bool) -> None:
         self._call(self._set_hidden, item, hidden)
 
+    def set_setup_done(self) -> None:
+        self._call(self._set_setup_done)
+
     def _call(self, fn, *args) -> None:
         if self._loop is None:
             raise RuntimeError("Engine is not running")
@@ -210,6 +213,11 @@ class Engine:
         self.config.set_hidden(item.key, item.label, hidden)
         self._save_config()
         self._recompute()
+
+    def _set_setup_done(self) -> None:
+        if not self.config.setup_done:
+            self.config.setup_done = True
+            self._save_config()
 
     def _save_config(self) -> None:
         try:

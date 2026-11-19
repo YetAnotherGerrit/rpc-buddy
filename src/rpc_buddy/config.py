@@ -16,6 +16,8 @@ log = logging.getLogger(__name__)
 DEFAULTS: dict[str, Any] = {
     "general": {
         "paused": False,
+        # Set once the first-run setup check was closed with "Done"
+        "setup_done": False,
         # Hidden games / music sources: [{key = "steam:<appid>", label = "…"}]
         "hidden": [],
     },
@@ -90,6 +92,14 @@ class Config:
     @paused.setter
     def paused(self, value: bool) -> None:
         self.data["general"]["paused"] = value
+
+    @property
+    def setup_done(self) -> bool:
+        return bool(self.data["general"].get("setup_done", False))
+
+    @setup_done.setter
+    def setup_done(self, value: bool) -> None:
+        self.data["general"]["setup_done"] = value
 
     @property
     def hidden(self) -> list[dict[str, str]]:

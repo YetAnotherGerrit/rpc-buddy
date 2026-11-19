@@ -1,5 +1,6 @@
 """Main window: status, modules with their settings, hidden items."""
 
+import html
 from collections.abc import Callable
 
 from PySide6.QtCore import Qt
@@ -25,27 +26,27 @@ from PySide6.QtWidgets import (
 from rpc_buddy import APP_NAME
 from rpc_buddy.activity import Health, HealthState
 from rpc_buddy.engine import Engine, EngineState, Item, ModuleStatus
+from rpc_buddy.gui import style
 from rpc_buddy.module import Setting
 
-_ICONS = {
-    HealthState.OK: "✔",
-    HealthState.STARTING: "…",
-    HealthState.NEEDS_SETUP: "⚠",
-    HealthState.ERROR: "✖",
-    HealthState.DISABLED: "○",
+_SYMBOLS = {
+    HealthState.OK: style.OK,
+    HealthState.STARTING: style.BUSY,
+    HealthState.NEEDS_SETUP: style.WARNING,
+    HealthState.ERROR: style.ERROR,
+    HealthState.DISABLED: style.OFF,
 }
 
 
-def _health_text(health: Health, fallback: str = "") -> str:
-    text = f"{_ICONS[health.state]} {health.message or fallback}".strip()
-    if health.hint and not health.ok:
-        text += f"\n{health.hint}"
-    return text
+def _health_html(health: Health, fallback: str = "") -> str:
+    details = health.hint if health.hint and not health.ok else ""
+    return style.status_html(_SYMBOLS[health.state], health.message or fallback, details)
 
 
 def _wrapping_label() -> QLabel:
     label = QLabel()
     label.setWordWrap(True)
+    label.setTextFormat(Qt.TextFormat.RichText)
     label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
     return label
 
@@ -104,7 +105,7 @@ class ModuleBox(QGroupBox):
         self.blockSignals(True)
         self.setChecked(status.enabled)
         self.blockSignals(False)
-        self._health.setText(_health_text(status.health, "Off" if not status.enabled else ""))
+        self._health.setText(_health_html(status.health, "Off" if not status.enabled else ""))
         for key, (widget, setter) in self._editors.items():
             if not widget.hasFocus():  # don't overwrite what the user is editing
                 setter(status.values.get(key))
@@ -148,15 +149,25 @@ class ItemList(QWidget):
             self._action(entry.data(Qt.ItemDataRole.UserRole))
 
 
+# Default window size, chosen for Full HD (1920×1080) screens.
+DEFAULT_SIZE = (600, 860)
+
+
 class MainWindow(QMainWindow):
-    def __init__(self, engine: Engine, quit_app: Callable[[], None], keep_running: bool):
+    def __init__(
+        self,
+        engine: Engine,
+        quit_app: Callable[[], None],
+        keep_running: bool,
+        open_setup: Callable[[], None],
+    ):
         super().__init__()
         self._engine = engine
         self._keep_running = keep_running  # closing hides the window (tray available)
         self._quit_app = quit_app
         self._module_boxes: dict[str, ModuleBox] = {}
+        self._sized = False
         self.setWindowTitle(APP_NAME)
-        self.resize(560, 720)
 
         content = QWidget()
         self._layout = QVBoxLayout(content)
@@ -184,6 +195,9 @@ class MainWindow(QMainWindow):
 
         self._layout.addStretch(1)
         quit_row = QHBoxLayout()
+        setup_button = QPushButton("Run setup check…")
+        setup_button.clicked.connect(open_setup)
+        quit_row.addWidget(setup_button)
         quit_row.addStretch(1)
         quit_button = QPushButton(f"Quit {APP_NAME}")
         quit_button.clicked.connect(quit_app)
@@ -196,15 +210,13 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(scroll)
 
     def on_state(self, state: EngineState) -> None:
-        self._discord.setText(_health_text(state.discord))
+        self._discord.setText(_health_html(state.discord))
         if state.paused:
-            shown = "Paused — nothing is shown on Discord."
+            lines = ["Paused — nothing is shown on Discord."]
         else:
-            shown = "\n".join(f"• {m.summary}" for m in state.shown) or "Nothing shown right now."
-        hidden_now = [m.summary for m in state.modules if m.hidden and m.activity]
-        if hidden_now and not state.paused:
-            shown += "\n" + "\n".join(f"• {s} (hidden)" for s in hidden_now)
-        self._shown.setText(shown)
+            lines = [f"• {m.summary}" for m in state.shown] or ["Nothing shown right now."]
+            lines += [f"• {m.summary} (hidden)" for m in state.modules if m.hidden and m.activity]
+        self._shown.setText("<br>".join(html.escape(line) for line in lines))
         self._pause.blockSignals(True)
         self._pause.setChecked(state.paused)
         self._pause.blockSignals(False)
@@ -221,7 +233,18 @@ class MainWindow(QMainWindow):
         self._recent.set_items(state.recent)
         self._hidden.set_items(state.hidden)
 
+    def _apply_default_size(self) -> None:
+        """Fits a Full HD screen with a panel; smaller screens get 90% + scrolling."""
+        screen = self.screen().availableGeometry()
+        self.resize(
+            min(DEFAULT_SIZE[0], int(screen.width() * 0.9)),
+            min(DEFAULT_SIZE[1], int(screen.height() * 0.9)),
+        )
+
     def show_and_raise(self) -> None:
+        if not self._sized:  # only the first time; later the user's size is kept
+            self._sized = True
+            self._apply_default_size()
         self.show()
         self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
         self.raise_()
