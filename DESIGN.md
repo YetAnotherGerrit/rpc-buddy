@@ -65,7 +65,7 @@ as Discord Rich Presence through Discord's local IPC socket.
 | Discord clients | Official only: Stable, PTB, Canary — Flatpak, native, Snap |
 | Game identity | Official Discord application ID per game (detectable list) |
 | Music identity | Neutral Discord app "rpc-buddy", application ID `1573024567658549388`; users can replace it with their own registered app's ID. The activity `name` is overridden with the player's name (e.g. "Deezer") |
-| Music status line | `status_display_type` configurable (app name / artist / title); default aligned to how Spotify shows for most users |
+| Music status line | `status_display_type` configurable (app name / artist / title); default **artist** until it is known how Spotify shows for most users |
 | Steam detection | Logs → Steam Web API (opt-in) |
 | Game vs. music | Both published in parallel; Discord shows both, game wins the status line — no own priority logic |
 | Unknown games | Not shown in v1 |

@@ -19,6 +19,15 @@ DEFAULTS: dict[str, Any] = {
     },
     "modules": {
         "steam": {"enabled": True},
+        "mpris": {
+            "enabled": True,
+            # Discord application id; replace with your own app to use its name/assets.
+            "client_id": "",
+            # Member-list status line: "state" (artist), "name" (e.g. Deezer), "details" (title)
+            "status_display": "state",
+            # Seconds a paused track stays visible
+            "pause_timeout": 30,
+        },
     },
 }
 
@@ -29,6 +38,20 @@ def _merge(base: dict, override: dict) -> dict:
         if isinstance(value, dict) and isinstance(result.get(key), dict):
             result[key] = _merge(result[key], value)
         else:
+            result[key] = value
+    return result
+
+
+def _diff(data: dict, defaults: dict) -> dict:
+    """Only the values that differ from the defaults (so changed defaults apply)."""
+    result = {}
+    for key, value in data.items():
+        default = defaults.get(key)
+        if isinstance(value, dict) and isinstance(default, dict):
+            sub = _diff(value, default)
+            if sub:
+                result[key] = sub
+        elif key not in defaults or value != default:
             result[key] = value
     return result
 
@@ -55,7 +78,7 @@ class Config:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".toml.tmp")
         with tmp.open("wb") as f:
-            tomli_w.dump(self.data, f)
+            tomli_w.dump(_diff(self.data, DEFAULTS), f)
         os.replace(tmp, self.path)
 
     @property

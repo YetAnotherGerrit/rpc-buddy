@@ -11,6 +11,7 @@ license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 requires-python = ">=3.13"
 dependencies = [
+    "dbus-fast>=5.2,<6",
     "pypresence>=4.6.2,<5",
     "tomli-w>=1.2",
     # Provided by io.qt.PySide.BaseApp inside the Flatpak; keep in sync with its version.
