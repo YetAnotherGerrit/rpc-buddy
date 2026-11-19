@@ -53,6 +53,13 @@ class MprisModule(Module):
             help="What Discord shows next to your name in member lists.",
         ),
         Setting(
+            "include_spotify",
+            "Include Spotify",
+            "bool",
+            help="Only needed if your Discord account is not connected to Spotify — "
+            "otherwise Discord already shows it and it would appear twice.",
+        ),
+        Setting(
             "pause_timeout",
             "Keep paused tracks for",
             "int",
@@ -137,7 +144,12 @@ class MprisModule(Module):
         track = track_from_metadata(props.get("Metadata") or {})
         if track is None:
             return None
-        source = source_name(bus_name, self._identities[bus_name], track.url)
+        source = source_name(
+            bus_name,
+            self._identities[bus_name],
+            track.url,
+            include_spotify=bool(self.ctx.settings.get("include_spotify", False)),
+        )
         if source is None:
             return None
         position = props.get("Position")

@@ -90,6 +90,16 @@ class ModuleBox(QGroupBox):
                 combo.setCurrentIndex(max(0, combo.findData(v)))
 
             return combo, set_combo
+        if s.kind == "bool":
+            check = QCheckBox()
+            check.toggled.connect(lambda on: save(self._id, s.key, on))
+
+            def set_check(v):
+                check.blockSignals(True)
+                check.setChecked(bool(v))
+                check.blockSignals(False)
+
+            return check, set_check
         if s.kind == "int":
             spin = QSpinBox()
             spin.setRange(s.minimum, s.maximum)

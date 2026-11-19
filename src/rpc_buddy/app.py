@@ -68,7 +68,12 @@ def run_gui(config: Config, background: bool) -> int:
     bridge = EngineBridge()
     engine = Engine(config, on_state=bridge.state_changed.emit)
     setup = SetupDialog(
-        None, environment=lambda: detect_environment(has_tray), on_done=engine.set_setup_done
+        None,
+        environment=lambda: detect_environment(has_tray),
+        on_done=engine.set_setup_done,
+        set_spotify_answer=lambda answer: engine.set_module_settings(
+            "mpris", {"include_spotify": answer == "via_buddy", "spotify_answer": answer}
+        ),
     )
 
     def open_setup() -> None:

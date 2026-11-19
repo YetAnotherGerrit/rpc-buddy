@@ -112,7 +112,7 @@ def test_recent_is_newest_first_and_bounded(tmp_path):
 
 def test_module_setting_is_saved(tmp_path):
     engine, _ = make_engine(tmp_path)
-    engine._set_module_setting("dummy", "volume", 7)
+    engine._set_module_settings("dummy", {"volume": 7})
     assert engine.state().modules[0].values["volume"] == 7
     assert Config.load(tmp_path / "config.toml").module_settings("dummy")["volume"] == 7
 
@@ -140,3 +140,22 @@ def test_setup_done_enables_autostart_and_reports_errors(tmp_path):
     assert state.autostart is False
     assert state.autostart_error == "denied"
     assert Config.load(tmp_path / "config.toml").autostart is False
+
+
+def test_overlapping_restarts_leave_one_running_module(tmp_path):
+    engine, _ = make_engine(tmp_path)
+
+    async def go():
+        engine._loop = asyncio.get_running_loop()
+        engine._restart_lock = asyncio.Lock()
+        engine._start_module("dummy")
+        engine._set_module_settings("dummy", {"a": 1})
+        engine._set_module_settings("dummy", {"b": 2})
+        for _ in range(10):
+            await asyncio.sleep(0)
+        tasks = [t for t in asyncio.all_tasks() if t.get_name() == "module-dummy"]
+        assert len(tasks) == 1
+        assert engine.state().modules[0].health.state is HealthState.STARTING
+        await engine._stop_module("dummy")
+
+    asyncio.run(go())

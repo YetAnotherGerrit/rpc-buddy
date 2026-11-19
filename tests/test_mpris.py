@@ -40,9 +40,17 @@ def test_electron_app_recognised_by_identity():
     assert source_name(CHROMIUM, "Chromium", None) is None
 
 
-def test_spotify_is_never_duplicated():
-    assert source_name("org.mpris.MediaPlayer2.spotify", "Spotify", None) is None
-    assert source_name(FIREFOX, "Mozilla firefox", "https://open.spotify.com/track/0") is None
+def test_spotify_only_when_included():
+    spotify = "org.mpris.MediaPlayer2.spotify"
+    web = "https://open.spotify.com/track/0"
+    # Default: skipped, Discord shows it itself via the account connection.
+    assert source_name(spotify, "Spotify", None) is None
+    assert source_name(FIREFOX, "Mozilla firefox", web) is None
+    assert source_name(CHROMIUM, "Spotify", None) is None
+    # Opt-in: shown like any other source.
+    assert source_name(spotify, "Spotify", None, include_spotify=True) == "Spotify"
+    assert source_name(FIREFOX, "Mozilla firefox", web, include_spotify=True) == "Spotify"
+    assert source_name(CHROMIUM, "Spotify", None, include_spotify=True) == "Spotify"
 
 
 def test_unknown_and_video_players_are_ignored():

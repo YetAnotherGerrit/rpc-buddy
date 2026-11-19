@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QRadioButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -65,12 +67,62 @@ class CheckRow(QFrame):
         grid.setColumnStretch(1, 1)
 
 
+# Answers to the Spotify question; only "via_buddy" shows Spotify through RPC Buddy.
+SPOTIFY_ANSWERS = (
+    ("linked", "Yes, it's linked — Discord shows Spotify itself"),
+    ("via_buddy", "No — show Spotify through RPC Buddy"),
+    ("not_used", "I don't use Spotify"),
+)
+
+
+class SpotifyQuestion(QFrame):
+    """Asks whether Spotify is linked in Discord (then Discord shows it itself)."""
+
+    def __init__(self, on_answer: Callable[[str], None]):
+        super().__init__()
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        layout = QVBoxLayout(self)
+        layout.addWidget(_label("Spotify", bold=True))
+        layout.addWidget(
+            _label(
+                "Is your Spotify account linked to Discord (Discord settings → Connections)? "
+                "Then Discord already shows what you play on Spotify. If not, RPC Buddy can "
+                "show it for you."
+            )
+        )
+        self._buttons: dict[str, QRadioButton] = {}
+        for answer, text in SPOTIFY_ANSWERS:
+            button = QRadioButton(text)
+            layout.addWidget(button)
+            self._buttons[answer] = button
+        self._buttons["linked"].setChecked(True)
+        # Connect only after the default is set, so it doesn't count as an answer.
+        for answer, button in self._buttons.items():
+            button.toggled.connect(lambda on, a=answer: on and on_answer(a))
+        layout.addWidget(_label("You can change this later in the main window (Music)."))
+
+    def set_value(self, include_spotify: bool, answer: str | None) -> None:
+        """Show the stored answer; the "Include Spotify" switch always wins."""
+        if include_spotify:
+            answer = "via_buddy"
+        elif answer not in ("linked", "not_used"):
+            answer = "linked"
+        button = self._buttons[answer]
+        if not button.isChecked():
+            for b in self._buttons.values():
+                b.blockSignals(True)
+            button.setChecked(True)
+            for b in self._buttons.values():
+                b.blockSignals(False)
+
+
 class SetupDialog(QDialog):
     def __init__(
         self,
         parent: QWidget | None,
         environment: Callable[[], Environment],
         on_done: Callable[[], None],
+        set_spotify_answer: Callable[[str], None],
     ):
         super().__init__(parent)
         self.setWindowTitle(f"Set up {APP_NAME}")
@@ -80,15 +132,27 @@ class SetupDialog(QDialog):
         self._state: EngineState | None = None
 
         layout = QVBoxLayout(self)
-        layout.addWidget(
-            _label(
-                f"{APP_NAME} shows your Steam games and music on Discord. "
-                "Here is what it found on your system:"
-            )
+        self._intro = _label(
+            f"{APP_NAME} shows your Steam games and music on Discord. "
+            "Here is what it found on your system:"
         )
+        layout.addWidget(self._intro)
+
+        # Rows scroll if the screen is too small, instead of being squeezed.
+        self._content = QWidget()
+        content_layout = QVBoxLayout(self._content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
         self._rows = QVBoxLayout()
-        layout.addLayout(self._rows)
-        layout.addStretch(1)
+        content_layout.addLayout(self._rows)
+        # Created once (not re-rendered), so a click is never lost.
+        self._spotify = SpotifyQuestion(set_spotify_answer)
+        content_layout.addWidget(self._spotify)
+        content_layout.addStretch(1)
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setWidget(self._content)
+        layout.addWidget(self._scroll, 1)
 
         buttons = QDialogButtonBox()
         recheck = buttons.addButton("Check again", QDialogButtonBox.ButtonRole.ActionRole)
@@ -97,6 +161,7 @@ class SetupDialog(QDialog):
         done.setDefault(True)
         buttons.accepted.connect(self.accept)
         layout.addWidget(buttons)
+        self._buttons = buttons
         self.accepted.connect(on_done)
 
     def on_state(self, state: EngineState) -> None:
@@ -105,6 +170,13 @@ class SetupDialog(QDialog):
             != (self._state.discord, [(m.enabled, m.health) for m in self._state.modules])
         )
         self._state = state
+        music = next((m for m in state.modules if m.id == "mpris"), None)
+        self._spotify.setVisible(music is not None and music.enabled)
+        if music is not None:
+            self._spotify.set_value(
+                bool(music.values.get("include_spotify", False)),
+                music.values.get("spotify_answer"),
+            )
         if changed and self.isVisible():
             self._render()
 
@@ -124,4 +196,21 @@ class SetupDialog(QDialog):
         if not self._sized:
             self._sized = True
             # Measure once the new rows are laid out.
-            QTimer.singleShot(0, lambda: style.fit_to_content(self, self))
+            QTimer.singleShot(0, self._fit)
+
+    def _fit(self) -> None:
+        """As tall as the content needs, at most 90% of the screen (then it scrolls)."""
+        layout = self.layout()
+        margins = layout.contentsMargins()
+        inner_width = self.width() - margins.left() - margins.right()
+        scrollbar = self.style().pixelMetric(self.style().PixelMetric.PM_ScrollBarExtent)
+        height = (
+            margins.top()
+            + self._intro.heightForWidth(inner_width)
+            + self._content.layout().totalHeightForWidth(inner_width - scrollbar)
+            + self._buttons.sizeHint().height()
+            + 2 * layout.spacing()
+            + margins.bottom()
+        )
+        screen = self.screen().availableGeometry()
+        self.resize(self.width(), min(height, int(screen.height() * 0.9)))

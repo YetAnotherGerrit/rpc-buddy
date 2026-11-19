@@ -122,6 +122,7 @@ class Engine:
     async def _main(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._stopping = asyncio.Event()
+        self._restart_lock = asyncio.Lock()
         sink_task = asyncio.create_task(self.sink.run(), name="discord-sink")
         for module_id in self._module_classes:
             if self.config.module_enabled(module_id):
@@ -149,7 +150,11 @@ class Engine:
         self._call(self._set_module_enabled, module_id, enabled)
 
     def set_module_setting(self, module_id: str, key: str, value: Any) -> None:
-        self._call(self._set_module_setting, module_id, key, value)
+        self._call(self._set_module_settings, module_id, {key: value})
+
+    def set_module_settings(self, module_id: str, values: dict[str, Any]) -> None:
+        """Change several settings at once (one module restart)."""
+        self._call(self._set_module_settings, module_id, dict(values))
 
     def set_hidden(self, item: Item, hidden: bool) -> None:
         self._call(self._set_hidden, item, hidden)
@@ -201,11 +206,11 @@ class Engine:
         elif not enabled and module_id in self._tasks:
             asyncio.ensure_future(self._stop_module(module_id))
 
-    def _set_module_setting(self, module_id: str, key: str, value: Any) -> None:
+    def _set_module_settings(self, module_id: str, values: dict[str, Any]) -> None:
         settings = self.config.module_settings(module_id)
-        if settings.get(key) == value:
+        if all(settings.get(k) == v for k, v in values.items()):
             return
-        settings[key] = value
+        settings.update(values)
         self._save_config()
         if module_id in self._tasks:
             asyncio.ensure_future(self._restart_module(module_id))
@@ -213,6 +218,10 @@ class Engine:
             self._emit()
 
     async def _restart_module(self, module_id: str) -> None:
+        async with self._restart_lock:  # restarts must not overlap
+            await self._restart_module_locked(module_id)
+
+    async def _restart_module_locked(self, module_id: str) -> None:
         await self._stop_module(module_id)
         if self.config.module_enabled(module_id):
             self._start_module(module_id)
@@ -251,6 +260,8 @@ class Engine:
             log.error("Could not save config: %s", e)
 
     def _start_module(self, module_id: str) -> None:
+        if module_id in self._tasks:  # never run a module twice
+            return
         cls = self._module_classes[module_id]
         ctx = ModuleContext(self, module_id, self.config.module_settings(module_id))
         self._health[module_id] = Health(HealthState.STARTING)

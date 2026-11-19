@@ -1,36 +1,111 @@
 # RPC Buddy
 
-Shows what you play and listen to on Linux as Discord Rich Presence — built
-for setups where Discord runs as a Flatpak and cannot detect games itself.
+Shows what you play and listen to on Linux as your Discord activity —
+built for setups where Discord runs as a Flatpak and cannot detect games
+itself.
 
-**Status:** early development, not ready for use yet.
+**Status:** early development. Not on Flathub yet; build it locally (see below).
 
-- Steam games appear with their official Discord name and artwork
-- Runs as a Flatpak, with a tray icon on KDE Plasma
-- Modular: more sources (e.g. music players via MPRIS) are planned
+## Features
 
-See [DESIGN.md](DESIGN.md) for the design and [FUTURE_IDEAS.md](FUTURE_IDEAS.md)
-for ideas that are not part of the first version.
+- **Steam games** appear as "Playing …" with the game's official Discord
+  name and artwork, as if Discord had detected the game itself.
+- **Music** from MPRIS players appears as "Listening to …" — e.g. Deezer,
+  TIDAL or YouTube Music (also in a browser), Elisa, Rhythmbox, Strawberry
+  and other music players. Spotify is optional: the setup check asks whether
+  your Spotify account is linked to Discord (then Discord shows it itself);
+  if not, RPC Buddy shows it.
+- Game and music are shown **side by side**; the game wins the status line
+  next to your name.
+- **Tray icon** (KDE Plasma and other desktops with a system tray) with the
+  current activity, pause and module switches.
+- **Hide list**: hide individual games or music sources.
+- **Setup check** on first start: shows what was found and gives copyable
+  commands for anything missing.
+- **Starts with your desktop session**, quietly in the tray (can be switched
+  off).
+
+## Requirements
+
+- Linux desktop with Flatpak (tested on KDE Plasma; GNOME works without a
+  tray icon unless the AppIndicator extension is installed)
+- The official Discord client — the Flatpak `com.discordapp.Discord` works
+  out of the box; Canary and Snap should as well (untested). A Discord installed without
+  Flatpak needs one extra permission (see Troubleshooting).
+- Steam (native or Flatpak) for game detection
+
+## Install (local build)
+
+```bash
+flatpak install --user flathub org.kde.Sdk//6.11 io.qt.PySide.BaseApp//6.11
+flatpak-builder --user --install --force-clean build-dir \
+    flatpak/io.github.YetAnotherGerrit.RpcBuddy.yml
+flatpak run io.github.YetAnotherGerrit.RpcBuddy
+```
+
+On the first start, the setup check opens. Close it with **Done**, and RPC
+Buddy starts automatically from then on.
+
+## How it works
+
+| What | How |
+|---|---|
+| Running Steam game | Read from Steam's own log file (`logs/console_log.txt`), read-only. No Steam account, API key or network access needed. |
+| Game name and artwork | Discord's public list of games it can detect, downloaded at most once a day and cached. |
+| Music | Read from the MPRIS interface that music players offer on the desktop session bus. |
+| Showing it on Discord | Sent only to the Discord client running on your computer, over its local connection (IPC). |
+
+### Privacy
+
+RPC Buddy has no servers and no tracking. The only network requests are
+downloading Discord's public game list and, through Discord, cover images
+that music players provide as web links. Your configuration stays in
+`~/.var/app/io.github.YetAnotherGerrit.RpcBuddy/config/rpc-buddy/config.toml`.
+
+## Limitations
+
+- Games that Discord doesn't know are not shown.
+- Music cover art only appears if the player provides it as a web link;
+  browsers usually only provide a local file, which Discord can't show.
+- Only the official Discord clients are supported.
+
+## Troubleshooting
+
+Open the main window (tray icon, or start RPC Buddy again) and click
+**Run setup check…**. Common cases:
+
+- **Discord installed without Flatpak** (e.g. .deb, .rpm, AUR): allow access
+  to its socket once, then restart RPC Buddy. Start Discord before RPC Buddy.
+
+  ```bash
+  flatpak override --user --filesystem=xdg-run/discord-ipc-0 io.github.YetAnotherGerrit.RpcBuddy
+  ```
+
+- **Steam installed in an unusual place**: allow RPC Buddy to read Steam's
+  logs folder:
+
+  ```bash
+  flatpak override --user --filesystem=/path/to/Steam/logs:ro io.github.YetAnotherGerrit.RpcBuddy
+  ```
+
+- **Logs**: run `flatpak run io.github.YetAnotherGerrit.RpcBuddy --debug` in a
+  terminal.
 
 ## Development
 
 Requires [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv sync                 # create .venv with Python 3.13 and all dependencies
-uv run rpc-buddy        # run with tray icon
+uv sync                               # .venv with Python 3.13 and all dependencies
+uv run rpc-buddy                      # run with window and tray icon
 uv run rpc-buddy --headless --debug   # run without GUI, verbose logging
-uv run pytest           # tests
-uv run ruff check .     # lint
+uv run pytest                         # tests
+uv run ruff check . && uv run ruff format --check .
 ```
 
-Build and install the Flatpak locally:
-
-```bash
-flatpak-builder --user --install --force-clean build-dir \
-    flatpak/io.github.YetAnotherGerrit.RpcBuddy.yml
-flatpak run io.github.YetAnotherGerrit.RpcBuddy
-```
+The design, decisions and test results are in [DESIGN.md](DESIGN.md);
+ideas for later in [FUTURE_IDEAS.md](FUTURE_IDEAS.md). New sources are
+added as modules — see `src/rpc_buddy/module.py`.
 
 ## License
 

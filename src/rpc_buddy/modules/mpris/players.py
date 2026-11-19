@@ -66,9 +66,11 @@ MUSIC_SITES = {
     "bandcamp.com": "Bandcamp",
 }
 
-# Discord shows Spotify by itself (account connection), so never duplicate it.
-IGNORED_PLAYERS = ("spotify", "spotifyd", "ncspot")
-IGNORED_SITES = ("open.spotify.com",)
+# Spotify: Discord shows it by itself if the Discord account is connected to
+# Spotify. Only included when the user opts in, to avoid showing it twice.
+SPOTIFY = "Spotify"
+SPOTIFY_PLAYERS = ("spotify", "spotifyd", "ncspot")
+SPOTIFY_SITES = ("open.spotify.com",)
 
 
 def player_key(bus_name: str) -> str:
@@ -87,11 +89,14 @@ def _site(url: str | None, sites) -> str | None:
     return None
 
 
-def source_name(bus_name: str, identity: str | None, url: str | None) -> str | None:
+def source_name(
+    bus_name: str, identity: str | None, url: str | None, include_spotify: bool = False
+) -> str | None:
     """Name of the music source to show, or None if this player is not music."""
     key = player_key(bus_name)
-    if key in IGNORED_PLAYERS or _site(url, IGNORED_SITES):
-        return None
+    is_spotify_app = key in SPOTIFY_PLAYERS or (identity or "").strip().lower() == "spotify"
+    if is_spotify_app or (key in BROWSERS and _site(url, SPOTIFY_SITES)):
+        return SPOTIFY if include_spotify else None
     if key in MUSIC_PLAYERS:
         return MUSIC_PLAYERS[key]
     if identity and identity.strip().lower() in MUSIC_IDENTITIES:

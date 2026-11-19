@@ -67,6 +67,7 @@ as Discord Rich Presence through Discord's local IPC socket.
 | Music identity | Neutral Discord app "rpc-buddy", application ID `1573024567658549388`; users can replace it with their own registered app's ID. The activity `name` is overridden with the player's name (e.g. "Deezer") |
 | Music status line | `status_display_type` configurable (app name / artist / title); default **artist** until it is known how Spotify shows for most users |
 | Steam detection | Logs → Steam Web API (opt-in) |
+| Spotify | Opt-in setting "Include Spotify" (default off): Discord shows Spotify itself when the account is connected; RPC Buddy only fills in for users without that connection |
 | Game vs. music | Both published in parallel; Discord shows both, game wins the status line — no own priority logic |
 | Unknown games | Not shown in v1 |
 | Autostart | On by default (applied when the first-run setup check is closed with Done), starts with `--background` into the tray; Flatpak: XDG Background portal |
@@ -199,6 +200,10 @@ standard setup needs no user action.
 ## 8. Flatpak
 
 - Runtime: `org.kde.Platform` 6.x + `io.qt.PySide.BaseApp`.
+- Size: the BaseApp ships build tools and extras (LLVM/Clang, numpy, PyOpenGL,
+  all Qt bindings, FFmpeg for QtMultimedia). `flatpak/cleanup-pyside.sh` removes
+  them, keeping only QtCore, QtGui, QtWidgets and QtNetwork: installed size
+  ~361 MB → ~22 MB. Using another Qt module means adding it to `KEEP` there.
 - Permissions (all narrow, no host escape):
   - `--socket=wayland`, `--socket=fallback-x11`, `--share=ipc`
   - `--share=network` (Discord API/CDN, Steam store/Web API)

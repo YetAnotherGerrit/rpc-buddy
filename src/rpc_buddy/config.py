@@ -31,6 +31,8 @@ DEFAULTS: dict[str, Any] = {
             "client_id": "",
             # Member-list status line: "state" (artist), "name" (e.g. Deezer), "details" (title)
             "status_display": "state",
+            # Show Spotify too (only if Discord isn't connected to Spotify, else it shows twice)
+            "include_spotify": False,
             # Seconds a paused track stays visible
             "pause_timeout": 30,
         },
