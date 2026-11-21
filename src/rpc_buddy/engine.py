@@ -63,12 +63,6 @@ class ModuleStatus:
     def on_discord(self) -> bool:
         return self.activity is not None and not self.hidden and not self.withheld
 
-    @property
-    def off_discord_reason(self) -> str:
-        if self.hidden:
-            return "hidden by you"
-        return self.withheld
-
 
 @dataclass(frozen=True)
 class EngineState:
@@ -87,6 +81,16 @@ class EngineState:
         if self.paused:
             return []
         return [m for m in self.modules if m.activity is not None and m.on_discord]
+
+    def off_discord_reason(self, m: ModuleStatus) -> str:
+        """Why ``m``'s activity is not on Discord ("" if it is)."""
+        if m.activity is None:
+            return ""
+        if m.hidden:
+            return "hidden by you"
+        if self.paused:
+            return "presence paused"
+        return m.withheld
 
 
 class Engine:

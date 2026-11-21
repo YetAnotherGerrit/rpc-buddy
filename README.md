@@ -17,9 +17,11 @@ itself.
   if not, RPC Buddy shows it.
 - Game and music are shown **side by side**; the game wins the status line
   next to your name.
-- **Main window** shows what's on Discord right now, like Discord's own
-  activity cards — with **Hide** on each card for games or music sources you
-  want to keep private. Follows your desktop's light/dark theme.
+- **Main window** shows your activity like Discord's own activity cards —
+  with **Hide** on each card for games or music sources you want to keep
+  private. Activities that aren't sent to Discord (hidden, paused, invisible
+  on Steam) stay visible, dimmed, with the reason — so pausing works as a
+  preview. Follows your desktop's light/dark theme.
 - **Respects Steam's Invisible status**: while you're invisible or offline on
   Steam, your game isn't shown on Discord either (can be switched off).
 - **Tray icon** (KDE Plasma and other desktops with a system tray) with the

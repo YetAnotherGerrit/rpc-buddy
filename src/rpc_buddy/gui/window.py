@@ -158,7 +158,7 @@ class ActivityCard(QFrame):
         self._overlay.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._overlay.hide()
 
-    def update_status(self, m: ModuleStatus) -> None:
+    def update_status(self, m: ModuleStatus, off_discord_reason: str = "") -> None:
         self._status = m
         a = m.activity
         music = a.type == ActivityType.LISTENING
@@ -184,14 +184,14 @@ class ActivityCard(QFrame):
             if m.hidden
             else "Keep this off Discord. You can show it again under Hidden."
         )
-        if m.on_discord:
+        if not off_discord_reason:
             self._content.setGraphicsEffect(None)
             self._overlay.hide()
         else:
             effect = QGraphicsOpacityEffect(self._content)
             effect.setOpacity(0.35)
             self._content.setGraphicsEffect(effect)
-            self._overlay.setText(f"Not on Discord — {m.off_discord_reason}")
+            self._overlay.setText(f"Not on Discord — {off_discord_reason}")
             self._overlay.show()
             self._place_overlay()
             QTimer.singleShot(0, self._place_overlay)  # again once the layout has settled
@@ -400,7 +400,7 @@ class MainWindow(QMainWindow):
 
         self._layout.addLayout(self._make_header())
         self._layout.addSpacing(6)
-        self._layout.addWidget(_section("Now on Discord"))
+        self._layout.addWidget(_section("Your activity"))
         self._cards_box = QVBoxLayout()
         self._cards_box.setSpacing(12)
         self._layout.addLayout(self._cards_box)
@@ -578,7 +578,9 @@ class MainWindow(QMainWindow):
         self._badge.updateGeometry()
 
     def _update_cards(self, state: EngineState) -> None:
-        active = [] if state.paused else [m for m in state.modules if m.activity is not None]
+        # Also while paused: a preview of what would be shown, so games can be
+        # hidden before they ever reach Discord.
+        active = [m for m in state.modules if m.activity is not None]
         active_ids = {m.id for m in active}
         for module_id in list(self._cards):
             if module_id not in active_ids:
@@ -589,7 +591,7 @@ class MainWindow(QMainWindow):
                 card = ActivityCard(self._covers, self._engine.set_hidden)
                 self._cards[m.id] = card
                 self._cards_box.insertWidget(i, card)
-            card.update_status(m)
+            card.update_status(m, state.off_discord_reason(m))
         self._empty.setVisible(not active)
         self._resume.setVisible(state.paused)
         if state.paused:

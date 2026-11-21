@@ -161,7 +161,26 @@ def test_withheld_activity_stays_off_discord_but_visible(tmp_path):
     engine, sink = make_engine(tmp_path)
     engine.publish("dummy", Activity(client_id="game"), "Playing X", withheld="reason")
     assert sink.desired == {}
-    m = engine.state().modules[0]
+    state = engine.state()
+    m = state.modules[0]
     assert m.activity is not None and not m.on_discord
-    assert m.off_discord_reason == "reason"
-    assert engine.state().shown == []
+    assert state.off_discord_reason(m) == "reason"
+    assert state.shown == []
+
+
+def test_off_discord_reason_order(tmp_path):
+    from rpc_buddy.engine import Item
+
+    engine, sink = make_engine(tmp_path)
+    item = Item("steam:1000001", "Example Quest")
+    engine.publish("dummy", Activity(client_id="game"), "x", item, withheld="module reason")
+    reason = lambda: engine.state().off_discord_reason(engine.state().modules[0])  # noqa: E731
+    assert reason() == "module reason"
+    engine._set_paused(True)
+    assert reason() == "presence paused"
+    engine._set_hidden(item, True)
+    assert reason() == "hidden by you"
+    # Hidden stays hidden after resuming; nothing reaches Discord meanwhile.
+    engine._set_paused(False)
+    assert reason() == "hidden by you"
+    assert sink.desired == {}
