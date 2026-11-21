@@ -3,7 +3,6 @@
 Pure logic (no Qt), so it can be tested; ``gui/setup.py`` displays it.
 """
 
-import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -41,20 +40,32 @@ CHOOSE_STEAM_FOLDER = "choose_folder:steam:steam_folder"
 class Environment:
     in_flatpak: bool
     tray_available: bool
-    discord_flatpak_dir_visible: bool  # $XDG_RUNTIME_DIR/app/com.discordapp.Discord
+    # The user allowed access to a Discord installed without Flatpak
+    # (flatpak override --filesystem=xdg-run/discord-ipc-0).
+    native_discord_allowed: bool = False
 
 
 def detect_environment(tray_available: bool) -> Environment:
-    runtime = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
+    info = Path("/.flatpak-info")
+    try:
+        allowed = "xdg-run/discord-ipc-0" in info.read_text()
+    except OSError:
+        allowed = False
     return Environment(
-        in_flatpak=Path("/.flatpak-info").exists(),
+        in_flatpak=info.exists(),
         tray_available=tray_available,
-        discord_flatpak_dir_visible=(runtime / "app" / "com.discordapp.Discord").is_dir(),
+        native_discord_allowed=allowed,
     )
 
 
 def _module(state: EngineState, module_id: str):
     return next((m for m in state.modules if m.id == module_id), None)
+
+
+NATIVE_DISCORD_NOTE = (
+    "With a Discord installed without Flatpak, start Discord before RPC Buddy, and "
+    "restart RPC Buddy after restarting Discord."
+)
 
 
 def discord_check(state: EngineState, env: Environment) -> Check:
@@ -63,16 +74,19 @@ def discord_check(state: EngineState, env: Environment) -> Check:
         return Check(title, CheckState.OK, state.discord.message or "Discord found")
     if state.discord.state is HealthState.STARTING:
         return Check(title, CheckState.INFO, "Looking for Discord…")
-    if not env.in_flatpak or env.discord_flatpak_dir_visible:
-        return Check(title, CheckState.WARNING, "Discord is not running. Start Discord.")
+    start_it = "Discord is not running. Start it — RPC Buddy connects within a few seconds."
+    if not env.in_flatpak:
+        return Check(title, CheckState.WARNING, start_it)
+    if env.native_discord_allowed:
+        return Check(title, CheckState.WARNING, start_it, note=NATIVE_DISCORD_NOTE)
     return Check(
         title,
         CheckState.WARNING,
-        "Discord is not reachable. If you use the Discord Flatpak, just start it. "
-        "If you use Discord installed without Flatpak (e.g. .deb, .rpm, AUR), "
+        start_it + " With the Discord Flatpak, it doesn't matter which starts first. "
+        "Only if your Discord is installed without Flatpak (e.g. .deb, .rpm, AUR): "
         "allow RPC Buddy to reach it once with this command, then restart RPC Buddy:",
         command=f"flatpak override --user --filesystem=xdg-run/discord-ipc-0 {APP_ID}",
-        note="With a non-Flatpak Discord, start Discord before RPC Buddy.",
+        note=NATIVE_DISCORD_NOTE,
     )
 
 

@@ -36,8 +36,8 @@ _UNREACHABLE = (
 )
 
 NOT_RUNNING_HINT = (
-    "Start Discord. If it is running, make sure RPC Buddy may access its IPC "
-    "socket (Flatpak Discord: $XDG_RUNTIME_DIR/app/com.discordapp.Discord)."
+    "Start Discord — RPC Buddy connects within a few seconds. Discord installed "
+    "without Flatpak? See the setup check."
 )
 
 

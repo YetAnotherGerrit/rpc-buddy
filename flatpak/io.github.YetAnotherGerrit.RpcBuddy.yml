@@ -14,7 +14,9 @@ finish-args:
   # Discord API/CDN (game list), later Steam Web API
   - --share=network
   # Discord IPC sockets (official clients)
-  - --filesystem=xdg-run/app/com.discordapp.Discord:ro
+  # :create, so the folder exists even if Discord starts after RPC Buddy —
+  # otherwise the sandbox would never see Discord's socket (verified, E8)
+  - --filesystem=xdg-run/app/com.discordapp.Discord:create
   - --filesystem=xdg-run/app/com.discordapp.DiscordCanary:ro
   - --filesystem=xdg-run/snap.discord:ro
   # Steam logs (native and Flatpak Steam), read-only

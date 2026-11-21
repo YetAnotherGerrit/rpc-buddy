@@ -2,7 +2,7 @@
 from rpc_buddy.activity import Activity, Health, HealthState
 from rpc_buddy.engine import EngineState, ModuleStatus
 from rpc_buddy.gui.covers import image_format
-from rpc_buddy.gui.tray import tooltip_text
+from rpc_buddy.gui.tray import needs_attention, tooltip_text
 
 
 def test_image_format_accepts_only_cover_formats():
@@ -48,3 +48,15 @@ def test_tooltip_states():
     assert "1 activity on Discord" in tooltip_text(state(titles=("x",)))
     assert "Paused" in tooltip_text(state(paused=True, titles=("x",)))
     assert "⚠ Discord not reachable" in tooltip_text(state(discord_ok=False))
+
+
+def test_tray_warns_only_when_discord_is_not_reachable():
+    assert needs_attention(state(discord_ok=False))
+    assert not needs_attention(state())
+    starting = EngineState(
+        discord=Health(HealthState.STARTING, "Looking for Discord…"),
+        paused=False,
+        modules=(),
+        hidden=(),
+    )
+    assert not needs_attention(starting)  # no warning flash right after start

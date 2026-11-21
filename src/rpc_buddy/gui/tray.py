@@ -4,13 +4,14 @@ import logging
 from collections.abc import Callable
 from importlib.resources import files
 
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtCore import QObject, QRectF, Qt, Signal
+from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from rpc_buddy import APP_ID, APP_NAME
 from rpc_buddy.activity import HealthState
 from rpc_buddy.engine import Engine, EngineState
+from rpc_buddy.gui import style
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +19,36 @@ log = logging.getLogger(__name__)
 def app_icon() -> QIcon:
     fallback = QIcon(str(files("rpc_buddy") / "resources" / "icon.svg"))
     return QIcon.fromTheme(APP_ID, fallback)
+
+
+def needs_attention(state: EngineState) -> bool:
+    """Discord can't be reached: the tray icon shows a warning badge."""
+    return state.discord.state in (HealthState.NEEDS_SETUP, HealthState.ERROR)
+
+
+def warning_icon(base: QIcon) -> QIcon:
+    """``base`` with an amber "!" badge in the bottom-right corner."""
+    icon = QIcon()
+    for size in (16, 22, 24, 32, 48, 64, 128):
+        pixmap = base.pixmap(size, size)
+        if pixmap.isNull():
+            continue
+        p = QPainter(pixmap)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        badge = max(8, size * (0.62 if size <= 24 else 0.55))
+        rect = QRectF(size - badge, size - badge, badge, badge)
+        p.setPen(QPen(QColor("white"), max(1.0, size / 24)))
+        p.setBrush(QColor(style.AMBER))
+        p.drawEllipse(rect.adjusted(0.5, 0.5, -0.5, -0.5))
+        font = p.font()
+        font.setBold(True)
+        font.setPixelSize(max(6, int(badge * 0.75)))
+        p.setFont(font)
+        p.setPen(QColor("white"))
+        p.drawText(rect, Qt.AlignmentFlag.AlignCenter, "!")
+        p.end()
+        icon.addPixmap(pixmap)
+    return icon
 
 
 def tooltip_text(state: EngineState) -> str:
@@ -49,7 +80,10 @@ class Tray(QObject):
         self._open_window = open_window
         self._quit_app = quit_app
         self._menu = QMenu()
-        self._icon = QSystemTrayIcon(app_icon())
+        self._normal_icon = app_icon()
+        self._warning_icon = warning_icon(self._normal_icon)
+        self._warning = False
+        self._icon = QSystemTrayIcon(self._normal_icon)
         self._icon.setContextMenu(self._menu)
         self._icon.setToolTip(APP_NAME)
         self._icon.activated.connect(self._on_activated)
@@ -67,6 +101,10 @@ class Tray(QObject):
             self._open_window()
 
     def on_state(self, state: EngineState) -> None:
+        warning = needs_attention(state)
+        if warning != self._warning:
+            self._warning = warning
+            self._icon.setIcon(self._warning_icon if warning else self._normal_icon)
         self._menu.clear()
 
         self._menu.addSection(APP_NAME)

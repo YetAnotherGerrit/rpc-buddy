@@ -54,7 +54,7 @@ as Discord Rich Presence through Discord's local IPC socket.
 | App ID | `io.github.YetAnotherGerrit.RpcBuddy` |
 | Hosting | GitHub (YetAnotherGerrit), public only after a few weeks of local use; Flathub after that. Until then, testers get a single-file bundle (§8.3) |
 | Config | One TOML file, edited via GUI, hand-editable; only values that differ from the defaults are saved, so changed defaults reach existing installs |
-| Discord clients | Official only. Flatpak Discord works out of the box; Canary (Flatpak) and Snap are permitted but untested; Discord installed without Flatpak needs a `flatpak override` (setup check offers it) |
+| Discord clients | Official only. Flatpak Discord works out of the box, in any start order (folder mounted with `:create`, E8); Canary (Flatpak) and Snap are permitted but untested; Discord installed without Flatpak needs a `flatpak override`, must start before RPC Buddy, and RPC Buddy must be restarted after Discord restarts (setup check explains; a self-restart via the Flatpak portal's `Spawn` is a possible later step) |
 | Game identity | Official Discord application ID per game (detectable list) |
 | Music identity | Neutral Discord app "RPC Buddy", application ID `1573024567658549388` (with app icon); users can replace it with their own app's ID. The activity `name` is set to the source's name (e.g. "Deezer") |
 | Music status line | `status_display_type` configurable (artist / app name / title); default **artist** until it is known how Spotify shows for most users |
@@ -216,11 +216,22 @@ large image = cover (or icon).
   `app/com.discordapp.Discord`, `app/com.discordapp.DiscordCanary` and
   `snap.discord`.
 - The Flatpak manifest grants the Discord, Discord Canary and Snap directories
-  up front, so the standard setup needs no user action. A Discord installed
-  without Flatpak puts its socket directly into `$XDG_RUNTIME_DIR`; that needs
-  `flatpak override --user --filesystem=xdg-run/discord-ipc-0 <app-id>`, and
-  Discord has to start before RPC Buddy (the socket must exist when the
-  sandbox is set up).
+  up front, so the standard setup needs no user action.
+- **Start order (E8, 2026-11):** a folder that doesn't exist when the sandbox
+  starts is never visible in it, even if it appears later. The folder
+  `$XDG_RUNTIME_DIR/app/com.discordapp.Discord` only exists once the Discord
+  Flatpak has run since login — so RPC Buddy autostarting before Discord stayed
+  "not reachable" until restarted. Fix: `:create` for that folder (Flatpak
+  creates it when RPC Buddy starts; Discord later puts its socket there). Cost:
+  `:create` implies read-write access to Discord's runtime folder; RPC Buddy
+  only connects to the socket. Canary and Snap stay `:ro`.
+- A Discord installed without Flatpak puts its socket directly into
+  `$XDG_RUNTIME_DIR`; that needs
+  `flatpak override --user --filesystem=xdg-run/discord-ipc-0 <app-id>`
+  (visible in `/.flatpak-info`, so the setup check adapts its text). Such a
+  single-file mount only works if Discord started first, and goes stale when
+  Discord restarts (new socket) — RPC Buddy must then be restarted.
+- While Discord is not reachable, the tray icon gets an amber "!" badge.
 - Over IPC without OAuth, Discord only reveals the logged-in user's profile
   (READY), not their activities or account connections (checked 2026-11).
 
@@ -242,8 +253,8 @@ All narrow, no host escape:
 
 - `--socket=wayland`, `--socket=fallback-x11`, `--share=ipc`, `--device=dri`
 - `--share=network` (Discord's game list)
-- `--filesystem=xdg-run/app/com.discordapp.Discord:ro`, `…DiscordCanary:ro`,
-  `xdg-run/snap.discord:ro`
+- `--filesystem=xdg-run/app/com.discordapp.Discord:create` (any start order,
+  see §7), `…DiscordCanary:ro`, `xdg-run/snap.discord:ro`
 - `--filesystem=~/.local/share/Steam/logs:ro`,
   `--filesystem=~/.var/app/com.valvesoftware.Steam/.local/share/Steam/logs:ro`
 - `--filesystem=~/.local/share/Steam/userdata:ro` (+ the Flatpak Steam path):
@@ -355,6 +366,10 @@ bundle replaces the old one. No automatic updates. x86_64 only so far.
   length, `xesam:url` (deezer.com) and a local `file://` cover.
 - **E5 ✅** From inside the KDE runtime with the planned permissions: Discord
   via the `:ro` socket mount, Steam logs, MPRIS and the tray icon all work.
+- **E8 ✅** (2026-11, Discord started after RPC Buddy) A runtime folder
+  created after the sandbox started is invisible inside it (`:ro`); with
+  `:create`, Flatpak creates it at sandbox start and a socket placed there
+  later is visible.
 - **E7 ✅** (2026-11, folder for Steam in an unusual place) Qt's
   `QFileDialog` inside the sandbox shows only the (empty) sandbox → unusable.
   The FileChooser portal (`OpenFile`, `directory: true`) shows the desktop's

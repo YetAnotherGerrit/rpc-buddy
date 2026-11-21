@@ -25,8 +25,9 @@ itself.
 - **Respects Steam's Invisible status**: while you're invisible or offline on
   Steam, your game isn't shown on Discord either (can be switched off).
 - **Tray icon** (KDE Plasma and other desktops with a system tray) with the
-  current activity, pause and module switches. Closing the window keeps RPC
-  Buddy running there; **Quit** in the window or tray menu stops it.
+  current activity, pause and module switches; it shows an amber "!" while
+  Discord can't be reached. Closing the window keeps RPC Buddy running there;
+  **Quit** in the window or tray menu stops it.
 - **Setup check** on first start: shows what was found and helps with
   anything missing — e.g. Steam in an unusual place is fixed by choosing its
   folder in your desktop's file dialog, no terminal needed.
@@ -38,8 +39,10 @@ itself.
 - Linux desktop with Flatpak (tested on KDE Plasma; GNOME should work, without
   a tray icon unless the AppIndicator extension is installed — not tested yet)
 - The official Discord client — the Flatpak `com.discordapp.Discord` works
-  out of the box; Canary and Snap should as well (untested). A Discord installed without
-  Flatpak needs one extra permission (see Troubleshooting).
+  out of the box, no matter whether Discord or RPC Buddy starts first; Canary
+  and Snap should work as well (untested). A Discord installed without Flatpak
+  needs one extra permission and some care with the start order (see
+  Troubleshooting).
 - Steam (native or Flatpak) for game detection
 
 ## Install a test build
@@ -101,12 +104,20 @@ Your configuration stays in
 Open the main window (tray icon, or start RPC Buddy again) and click
 **Run setup check…**. Common cases:
 
+- **"Discord not reachable"** (amber "!" on the tray icon): start Discord —
+  RPC Buddy connects within a few seconds. With the Discord Flatpak it doesn't
+  matter which of the two starts first.
 - **Discord installed without Flatpak** (e.g. .deb, .rpm, AUR): allow access
-  to its socket once, then restart RPC Buddy. Start Discord before RPC Buddy.
+  to its socket once, then restart RPC Buddy:
 
   ```bash
   flatpak override --user --filesystem=xdg-run/discord-ipc-0 io.github.YetAnotherGerrit.RpcBuddy
   ```
+
+  Such a Discord has to be started **before** RPC Buddy, and RPC Buddy has to
+  be restarted after Discord was restarted — a sandbox can only see a single
+  socket file that already existed when it started. The Discord Flatpak
+  doesn't have these limits.
 
 - **Steam installed in an unusual place**: click **Choose Steam folder…** in
   the setup check (or Steam's ⚙ → Steam folder → **Choose…**) and pick the

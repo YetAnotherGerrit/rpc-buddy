@@ -10,10 +10,9 @@ from rpc_buddy.setup_checks import (
     tray_check,
 )
 
-FLATPAK = Environment(in_flatpak=True, tray_available=True, discord_flatpak_dir_visible=True)
-NO_DISCORD_DIR = Environment(
-    in_flatpak=True, tray_available=False, discord_flatpak_dir_visible=False
-)
+FLATPAK = Environment(in_flatpak=True, tray_available=True)
+NATIVE_ALLOWED = Environment(in_flatpak=True, tray_available=True, native_discord_allowed=True)
+NO_TRAY = Environment(in_flatpak=True, tray_available=False)
 
 
 def module(module_id, health, enabled=True):
@@ -41,21 +40,23 @@ def test_everything_ok():
     assert [c.state for c in checks] == [CheckState.OK] * 5
 
 
-def test_discord_flatpak_not_running_just_says_start_it():
+def test_discord_not_running_says_start_it_and_offers_native_command():
     check = discord_check(state(NOT_REACHABLE), FLATPAK)
     assert check.state is CheckState.WARNING
-    assert check.command == ""
-
-
-def test_native_discord_gets_override_command():
-    check = discord_check(state(NOT_REACHABLE), NO_DISCORD_DIR)
-    assert check.state is CheckState.WARNING
+    assert "Start it" in check.message
+    assert "doesn't matter which starts first" in check.message
     assert "--filesystem=xdg-run/discord-ipc-0" in check.command
     assert "before RPC Buddy" in check.note
 
 
+def test_native_override_already_set_only_explains_start_order():
+    check = discord_check(state(NOT_REACHABLE), NATIVE_ALLOWED)
+    assert check.command == ""
+    assert "restart RPC Buddy after restarting Discord" in check.note
+
+
 def test_outside_flatpak_no_override_command():
-    env = Environment(in_flatpak=False, tray_available=True, discord_flatpak_dir_visible=False)
+    env = Environment(in_flatpak=False, tray_available=True)
     assert discord_check(state(NOT_REACHABLE), env).command == ""
 
 
@@ -76,7 +77,7 @@ def test_disabled_module_is_info():
 
 
 def test_no_tray_is_info_not_error():
-    assert tray_check(NO_DISCORD_DIR).state is CheckState.INFO
+    assert tray_check(NO_TRAY).state is CheckState.INFO
 
 
 def test_autostart_row():
