@@ -80,6 +80,14 @@ def run_gui(config: Config, background: bool) -> int:
         nonlocal last_state
         last_state = state
 
+    def run_setup_action(action: str) -> None:
+        kind, _, rest = action.partition(":")
+        if kind == "disable" and rest:
+            engine.set_module_enabled(rest, False)
+        elif kind == "choose_folder":
+            module_id, _, key = rest.partition(":")
+            engine.choose_folder(module_id, key, "Choose the folder where Steam is installed")
+
     def get_setup() -> SetupDialog:
         nonlocal setup
         if setup is None:
@@ -90,6 +98,7 @@ def run_gui(config: Config, background: bool) -> int:
                 set_spotify_answer=lambda answer: engine.set_module_settings(
                     "mpris", {"include_spotify": answer == "via_buddy", "spotify_answer": answer}
                 ),
+                on_action=run_setup_action,
             )
             if last_state is not None:
                 setup.on_state(last_state)

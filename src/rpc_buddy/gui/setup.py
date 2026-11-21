@@ -39,7 +39,7 @@ def _label(text: str, *, bold: bool = False) -> QLabel:
 
 
 class CheckRow(QFrame):
-    def __init__(self, check: Check):
+    def __init__(self, check: Check, on_action: Callable[[str], None]):
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
         grid = QGridLayout(self)
@@ -53,6 +53,15 @@ class CheckRow(QFrame):
         grid.addWidget(_label(check.title, bold=True), 0, 1)
         grid.addWidget(_label(check.message), 1, 1)
         row = 2
+        if check.actions:  # the easy way first, the command below as fallback
+            line = QHBoxLayout()
+            for action, label in check.actions:
+                button = QPushButton(label)
+                button.clicked.connect(lambda _c=False, a=action: on_action(a))
+                line.addWidget(button)
+            line.addStretch(1)
+            grid.addLayout(line, row, 1)
+            row += 1
         if check.command:
             line = QHBoxLayout()
             edit = QLineEdit(check.command)
@@ -126,12 +135,14 @@ class SetupDialog(QDialog):
         environment: Callable[[], Environment],
         on_done: Callable[[], None],
         set_spotify_answer: Callable[[str], None],
+        on_action: Callable[[str], None] = lambda action: None,
     ):
         super().__init__(parent)
         self.setWindowTitle(f"Set up {APP_NAME}")
         self.resize(620, 400)
         self._sized = False
         self._environment = environment
+        self._on_action = on_action
         self._state: EngineState | None = None
 
         layout = QVBoxLayout(self)
@@ -197,7 +208,7 @@ class SetupDialog(QDialog):
             if widget is not None:
                 widget.deleteLater()
         for check in run_checks(self._state, self._environment()):
-            self._rows.addWidget(CheckRow(check))
+            self._rows.addWidget(CheckRow(check, self._on_action))
         if not self._sized:
             self._sized = True
             # Measure once the new rows are laid out.

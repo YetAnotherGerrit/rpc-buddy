@@ -23,7 +23,7 @@ class Setting:
 
     key: str
     label: str
-    kind: Literal["text", "choice", "int", "bool"]
+    kind: Literal["text", "choice", "int", "bool", "folder"]
     help: str = ""
     choices: tuple[tuple[str, str], ...] = ()  # (value, label) for kind="choice"
     minimum: int = 0

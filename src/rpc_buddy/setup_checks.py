@@ -27,6 +27,14 @@ class Check:
     message: str
     command: str = ""  # copyable fix, e.g. a flatpak override
     note: str = ""
+    actions: tuple[tuple[str, str], ...] = ()  # (action id, button label)
+
+
+# Action ids understood by the GUI:
+#   "disable:<module id>"               switches a module off
+#   "choose_folder:<module id>:<key>"   lets the user pick a folder for a setting
+DISABLE_STEAM = "disable:steam"
+CHOOSE_STEAM_FOLDER = "choose_folder:steam:steam_folder"
 
 
 @dataclass(frozen=True)
@@ -72,17 +80,30 @@ def steam_check(state: EngineState) -> Check:
     title = "Steam games"
     m = _module(state, "steam")
     if m is None or not m.enabled:
-        return Check(title, CheckState.INFO, "Switched off.")
+        return Check(
+            title,
+            CheckState.INFO,
+            "Switched off. You can switch it on again in the main window (Sources).",
+        )
     if m.health.state is HealthState.NEEDS_SETUP:
         folder = str(m.values.get("steam_folder") or "")
+        problem = (
+            f"Couldn't open the folder dialog ({state.folder_error}). "
+            if state.folder_error
+            else "If choosing the folder doesn't work, "
+        )
         return Check(
             title,
             CheckState.WARNING,
-            "Steam's logs were not found. Start Steam once. If Steam is installed in an "
-            "unusual place, enter its folder in the Steam settings (⚙) and allow RPC "
-            "Buddy to read it" + (":" if folder else " (adjust the path):"),
+            "Steam's logs were not found. Start Steam once — or, if Steam is installed "
+            "in an unusual place, choose its folder (the one that contains “logs” and "
+            "“userdata”).",
             command=override_command(folder),
-            note="Restart RPC Buddy after running the command.",
+            note=problem + "run this command instead (adjust the path) and restart RPC Buddy.",
+            actions=(
+                (CHOOSE_STEAM_FOLDER, "Choose Steam folder…"),
+                (DISABLE_STEAM, "I don't use Steam"),
+            ),
         )
     if m.health.state is HealthState.ERROR:
         return Check(title, CheckState.WARNING, m.health.message, note=m.health.hint)

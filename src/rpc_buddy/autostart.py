@@ -8,32 +8,22 @@ the Flatpak (development), the entry is written directly.
 import asyncio
 import logging
 import os
-import secrets
 import shutil
 import sys
 from pathlib import Path
 
-from dbus_fast import Message, MessageType, Variant
-from dbus_fast.aio import MessageBus
+from dbus_fast import Variant
 
-from rpc_buddy import APP_ID, APP_NAME
+from rpc_buddy import APP_ID, APP_NAME, portal
 from rpc_buddy.paths import in_flatpak
 
 log = logging.getLogger(__name__)
 
-PORTAL = "org.freedesktop.portal.Desktop"
-PORTAL_PATH = "/org/freedesktop/portal/desktop"
 RESPONSE_TIMEOUT = 120.0  # the desktop may ask the user
 
 
 class AutostartError(Exception):
     pass
-
-
-def request_path(unique_name: str, token: str) -> str:
-    """Object path of the portal Request for our ``handle_token``."""
-    sender = unique_name.removeprefix(":").replace(".", "_")
-    return f"{PORTAL_PATH}/request/{sender}/{token}"
 
 
 async def set_autostart(enabled: bool) -> None:
@@ -45,63 +35,23 @@ async def set_autostart(enabled: bool) -> None:
 
 
 async def _portal_request(enabled: bool) -> None:
-    bus = await MessageBus().connect()
     try:
-        token = "rpc_buddy_" + secrets.token_hex(8)
-        path = request_path(bus.unique_name, token)
-        future: asyncio.Future = asyncio.get_running_loop().create_future()
-
-        def on_message(msg: Message) -> None:
-            if (
-                msg.message_type == MessageType.SIGNAL
-                and msg.path == path
-                and msg.member == "Response"
-                and not future.done()
-            ):
-                future.set_result(msg.body)
-
-        bus.add_message_handler(on_message)
-        match = f"type='signal',interface='org.freedesktop.portal.Request',path='{path}'"
-        await bus.call(
-            Message(
-                destination="org.freedesktop.DBus",
-                path="/org/freedesktop/DBus",
-                interface="org.freedesktop.DBus",
-                member="AddMatch",
-                signature="s",
-                body=[match],
-            )
+        response, results = await portal.request(
+            "org.freedesktop.portal.Background",
+            "RequestBackground",
+            [""],
+            {
+                "reason": Variant("s", f"Start {APP_NAME} when you log in"),
+                "autostart": Variant("b", enabled),
+                "commandline": Variant("as", ["rpc-buddy", "--background"]),
+            },
+            timeout=RESPONSE_TIMEOUT,
         )
-        options = {
-            "handle_token": Variant("s", token),
-            "reason": Variant("s", f"Start {APP_NAME} when you log in"),
-            "autostart": Variant("b", enabled),
-            "commandline": Variant("as", ["rpc-buddy", "--background"]),
-        }
-        reply = await bus.call(
-            Message(
-                destination=PORTAL,
-                path=PORTAL_PATH,
-                interface="org.freedesktop.portal.Background",
-                member="RequestBackground",
-                signature="sa{sv}",
-                body=["", options],
-            )
-        )
-        if reply.message_type == MessageType.ERROR:
-            raise AutostartError(f"Background portal unavailable: {reply.error_name}")
-        try:
-            response, results = await asyncio.wait_for(future, RESPONSE_TIMEOUT)
-        except TimeoutError as e:
-            raise AutostartError("The desktop did not answer the autostart request") from e
-        if response != 0:
-            raise AutostartError("Autostart was not allowed by the desktop")
-        granted = results.get("autostart")
-        if enabled and granted is not None and not granted.value:
-            raise AutostartError("Autostart was not allowed by the desktop")
-        log.info("Autostart %s via the Background portal", "enabled" if enabled else "disabled")
-    finally:
-        bus.disconnect()
+    except portal.PortalError as e:
+        raise AutostartError(str(e)) from e
+    if response != portal.SUCCESS or (enabled and results.get("autostart") is False):
+        raise AutostartError("Autostart was not allowed by the desktop")
+    log.info("Autostart %s via the Background portal", "enabled" if enabled else "disabled")
 
 
 def autostart_dir() -> Path:

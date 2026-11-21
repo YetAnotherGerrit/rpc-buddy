@@ -66,6 +66,7 @@ as Discord Rich Presence through Discord's local IPC socket.
 | Autostart | On by default (applied when the first-run setup check is closed with Done), starts with `--background` into the tray; Flatpak: XDG Background portal |
 | Hide list | Games per Steam app, music per source (player/service); hidden with "Hide" on the activity card in the main window, shown again via the card or the chips under Hidden |
 | Setup check | First-run dialog, reopenable from the main window |
+| Steam in an unusual place | Choose its folder in the desktop's file dialog (FileChooser portal → document portal, access persists; E7); `flatpak override` as fallback; "I don't use Steam" switches the module off |
 | Main window size | Fixed default 600×860 for Full HD screens, capped at 90% of smaller screens |
 | Main window look | "Now on Discord" layout (mockup A; the section is titled "Your activity"): activity cards like Discord's own, toggle switches, sources list, hidden chips (chosen from three mockups, 2026-11) |
 | Light / dark | No hard-coded theme: colours are derived from the system palette (incl. the accent colour) and rebuilt when the desktop switches |
@@ -141,8 +142,9 @@ as Discord Rich Presence through Discord's local IPC socket.
   On start, the whole current log is replayed to find a game that is already
   running. A new log (Steam restart, detected by inode/size) resets the
   state. With several games running, the most recently started one is shown.
-- Steam roots probed: the folder from the setting "Steam folder" (if set),
-  then `~/.local/share/Steam`, `~/.steam/steam`,
+- Steam roots probed: the folder from the setting "Steam folder" (if set —
+  typed, or chosen via the desktop's file dialog, then a
+  `/run/user/<uid>/doc/<id>/…` path), then `~/.local/share/Steam`, `~/.steam/steam`,
   `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` and
   `…/com.valvesoftware.Steam/data/Steam` (the Flatpak Steam paths are not
   verified yet).
@@ -257,6 +259,9 @@ All narrow, no host escape:
 Verified from inside the `org.kde.Platform//6.11` runtime (E5). The session
 bus must not be disabled (`flatpak run --sandbox` breaks MPRIS and the tray).
 Autostart uses the XDG Background portal, which needs no extra permission.
+Folders chosen in the file dialog (FileChooser portal) are shared through the
+document portal — also no extra permission; the access is stored in Flatpak's
+permission store (the portal grants read and write).
 
 Files: config `$XDG_CONFIG_HOME/rpc-buddy/config.toml`, cache (game list
 database `detectable.sqlite3`) `$XDG_CACHE_HOME/rpc-buddy/` — inside the Flatpak under
@@ -306,8 +311,13 @@ bundle replaces the old one. No automatic updates. x86_64 only so far.
 - **Setup check** (first run, reopenable): Discord, Steam games, music, tray
   icon, autostart, plus the Spotify question — coloured status and copyable
   `flatpak override --user …` commands where something is missing; rows
-  scroll on small screens. The app cannot change its own sandbox permissions.
+  scroll on small screens. Rows can offer action buttons (e.g. Steam: "Choose
+  Steam folder…", "I don't use Steam"); the command stays as a fallback.
   Logic in `setup_checks.py` (Qt-free, tested).
+- **Folder settings** (`Setting(kind="folder")`): text field plus "Choose…",
+  which opens the desktop's file dialog through the FileChooser portal
+  (`portal.py`, shared with autostart). Qt's own dialog is useless inside the
+  sandbox (it only sees the sandbox, E7).
 - **Single instance**: a second launch asks the running one to show its
   window (local socket in `$XDG_RUNTIME_DIR/app/<app-id>/`).
 - `--background` starts into the tray without opening the window.
@@ -345,6 +355,13 @@ bundle replaces the old one. No automatic updates. x86_64 only so far.
   length, `xesam:url` (deezer.com) and a local `file://` cover.
 - **E5 ✅** From inside the KDE runtime with the planned permissions: Discord
   via the `:ro` socket mount, Steam logs, MPRIS and the tray icon all work.
+- **E7 ✅** (2026-11, folder for Steam in an unusual place) Qt's
+  `QFileDialog` inside the sandbox shows only the (empty) sandbox → unusable.
+  The FileChooser portal (`OpenFile`, `directory: true`) shows the desktop's
+  dialog; the folder arrives as `/run/user/<uid>/doc/<id>/<name>`, is
+  readable, log appends are seen immediately, and access survives a restart.
+  E7d: the Steam module with such a folder as "Steam folder" detects a game
+  start inside the sandbox.
 
 Also verified: Discord's detectable list maps Steam games to their official
 Discord app (Steam app id → Discord application id, with cover art).

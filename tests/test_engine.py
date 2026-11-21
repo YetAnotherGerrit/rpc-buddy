@@ -184,3 +184,28 @@ def test_off_discord_reason_order(tmp_path):
     engine._set_paused(False)
     assert reason() == "hidden by you"
     assert sink.desired == {}
+
+
+def test_choose_folder_stores_setting_or_reports_error(tmp_path):
+    engine, _ = make_engine(tmp_path)
+
+    async def chosen(title):
+        return "/run/user/1000/doc/Abc/Steam"
+
+    async def failing(title):
+        raise RuntimeError("no portal")
+
+    async def cancelled(title):
+        return None
+
+    async def go(fn):
+        engine._choose_folder = fn
+        await engine._choose("dummy", "steam_folder", "Choose")
+
+    asyncio.run(go(chosen))
+    assert engine.state().modules[0].values["steam_folder"] == "/run/user/1000/doc/Abc/Steam"
+    asyncio.run(go(failing))
+    assert engine.state().folder_error == "no portal"
+    asyncio.run(go(cancelled))
+    assert engine.state().folder_error == ""
+    assert engine.state().modules[0].values["steam_folder"] == "/run/user/1000/doc/Abc/Steam"

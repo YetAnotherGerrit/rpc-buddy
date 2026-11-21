@@ -263,6 +263,7 @@ class ModuleSettingsDialog(QDialog):
         self.setMinimumWidth(440)
         self._engine = engine
         self._id = status.id
+        self._folder_edits: dict[str, QLineEdit] = {}
         layout = QVBoxLayout(self)
         health = status.health
         if health.hint and not health.ok:
@@ -310,7 +311,27 @@ class ModuleSettingsDialog(QDialog):
         edit = QLineEdit(str(value or ""))
         edit.setPlaceholderText(s.placeholder)
         edit.editingFinished.connect(lambda: save(edit.text().strip()))
-        return edit
+        if s.kind != "folder":
+            return edit
+        # Folder: typed, or chosen in the desktop's file dialog (which also gives
+        # the Flatpak access to it — no permission changes needed).
+        self._folder_edits[s.key] = edit
+        choose = QPushButton(style.theme_icon("document-open-folder", "folder-open"), "Choose…")
+        choose.clicked.connect(
+            lambda: self._engine.choose_folder(self._id, s.key, f"Choose the {s.label.lower()}")
+        )
+        row = QWidget()
+        box = QHBoxLayout(row)
+        box.setContentsMargins(0, 0, 0, 0)
+        box.addWidget(edit, 1)
+        box.addWidget(choose)
+        return row
+
+    def update_values(self, values: dict) -> None:
+        """Show a folder chosen in the file dialog while this dialog is open."""
+        for key, edit in self._folder_edits.items():
+            if not edit.hasFocus():
+                edit.setText(str(values.get(key) or ""))
 
 
 class SourceRow(QWidget):
@@ -321,6 +342,7 @@ class SourceRow(QWidget):
         self._window = window
         self._engine = engine
         self._status = status
+        self._dialog: ModuleSettingsDialog | None = None
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(14)
@@ -368,9 +390,15 @@ class SourceRow(QWidget):
         self._switch.blockSignals(False)
         self._health.setText(_health_html(status.health, "Off" if not status.enabled else ""))
         self._health.setToolTip(status.health.hint if not status.health.ok else "")
+        if self._dialog is not None:
+            self._dialog.update_values(status.values)
 
     def _open_settings(self) -> None:
-        ModuleSettingsDialog(self._window, self._engine, self._status).exec()
+        self._dialog = ModuleSettingsDialog(self._window, self._engine, self._status)
+        try:
+            self._dialog.exec()
+        finally:
+            self._dialog = None
 
 
 class MainWindow(QMainWindow):

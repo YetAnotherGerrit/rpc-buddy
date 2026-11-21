@@ -27,8 +27,9 @@ itself.
 - **Tray icon** (KDE Plasma and other desktops with a system tray) with the
   current activity, pause and module switches. Closing the window keeps RPC
   Buddy running there; **Quit** in the window or tray menu stops it.
-- **Setup check** on first start: shows what was found and gives copyable
-  commands for anything missing.
+- **Setup check** on first start: shows what was found and helps with
+  anything missing — e.g. Steam in an unusual place is fixed by choosing its
+  folder in your desktop's file dialog, no terminal needed.
 - **Starts with your desktop session**, quietly in the tray (can be switched
   off).
 
@@ -107,16 +108,21 @@ Open the main window (tray icon, or start RPC Buddy again) and click
   flatpak override --user --filesystem=xdg-run/discord-ipc-0 io.github.YetAnotherGerrit.RpcBuddy
   ```
 
-- **Steam installed in an unusual place**: enter Steam's folder (the one that
-  contains `logs` and `userdata`) under Steam's ⚙ in the main window, allow
-  RPC Buddy to read it (adjust the path), then restart RPC Buddy:
+- **Steam installed in an unusual place**: click **Choose Steam folder…** in
+  the setup check (or Steam's ⚙ → Steam folder → **Choose…**) and pick the
+  folder that contains `logs` and `userdata`. Your desktop's file dialog
+  shares exactly that folder with RPC Buddy — no terminal, no restart. (Like
+  all "open" dialogs of sandboxed apps, this allows reading and writing that
+  folder; RPC Buddy only reads.) If the dialog doesn't work on your desktop,
+  allow access by hand and restart RPC Buddy:
 
   ```bash
   flatpak override --user --filesystem=/path/to/Steam/logs:ro \
       --filesystem=/path/to/Steam/userdata:ro io.github.YetAnotherGerrit.RpcBuddy
   ```
 
-  The setup check shows this command with your folder filled in.
+- **You don't use Steam**: click **I don't use Steam** in the setup check (or
+  switch Steam off under Sources).
 
 - **Logs**: run `flatpak run io.github.YetAnotherGerrit.RpcBuddy --debug` in a
   terminal.

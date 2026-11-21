@@ -100,3 +100,17 @@ def test_steam_override_uses_configured_folder():
     check = steam_check(replace(s, modules=(custom, s.modules[1])))
     assert "--filesystem=/mnt/games/Steam/logs:ro" in check.command
     assert "--filesystem=/mnt/games/Steam/userdata:ro" in check.command
+
+
+def test_steam_not_found_offers_choose_and_dont_use_steam():
+    from dataclasses import replace
+
+    from rpc_buddy.setup_checks import CHOOSE_STEAM_FOLDER, DISABLE_STEAM
+
+    s = state(NOT_REACHABLE, steam=Health(HealthState.NEEDS_SETUP))
+    check = steam_check(s)
+    assert [a for a, _ in check.actions] == [CHOOSE_STEAM_FOLDER, DISABLE_STEAM]
+    assert "If choosing the folder doesn't work" in check.note
+    assert steam_check(state(Health(HealthState.OK))).actions == ()
+    failed = steam_check(replace(s, folder_error="no portal"))
+    assert "Couldn't open the folder dialog (no portal)" in failed.note

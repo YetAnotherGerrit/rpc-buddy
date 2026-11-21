@@ -25,7 +25,8 @@ INVISIBLE_REASON = "you're invisible on Steam"
 def not_found_hint(folder: str) -> str:
     return (
         "Start Steam once so it creates its logs. If Steam is installed in an unusual "
-        "place, enter its folder in the Steam settings (⚙) and allow RPC Buddy to read it:\n"
+        "place, choose its folder in the Steam settings (⚙ → Steam folder → Choose…) "
+        "or in the setup check. If that doesn't work, run this and restart RPC Buddy:\n"
         + override_command(folder)
     )
 
@@ -37,7 +38,7 @@ class SteamModule(Module):
         Setting(
             "steam_folder",
             "Steam folder",
-            "text",
+            "folder",
             placeholder="Found automatically",
             help="Only needed if Steam is installed in an unusual place: the folder that "
             "contains Steam's logs and userdata folders.",

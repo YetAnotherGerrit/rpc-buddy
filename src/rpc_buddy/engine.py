@@ -14,6 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from rpc_buddy import portal
 from rpc_buddy.activity import Activity, Health, HealthState
 from rpc_buddy.autostart import set_autostart
 from rpc_buddy.config import Config
@@ -74,6 +75,7 @@ class EngineState:
     autostart_error: str = ""
     setup_done: bool = True
     close_hint_shown: bool = True
+    folder_error: str = ""  # the folder dialog could not be opened
 
     @property
     def shown(self) -> list[ModuleStatus]:
@@ -117,6 +119,8 @@ class Engine:
         self._thread: threading.Thread | None = None
         self._autostart_error = ""
         self._apply_autostart = set_autostart  # replaceable in tests
+        self._folder_error = ""
+        self._choose_folder = portal.choose_folder  # replaceable in tests
 
     # --- lifecycle --------------------------------------------------------
 
@@ -176,6 +180,10 @@ class Engine:
 
     def set_setup_done(self) -> None:
         self._call(self._set_setup_done)
+
+    def choose_folder(self, module_id: str, key: str, title: str) -> None:
+        """Ask the user for a folder (desktop dialog) and store it as a setting."""
+        self._call(lambda: asyncio.ensure_future(self._choose(module_id, key, title)))
 
     def set_close_hint_shown(self) -> None:
         self._call(self._set_close_hint_shown)
@@ -251,6 +259,19 @@ class Engine:
         self.config.set_hidden(item.key, item.label, hidden)
         self._save_config()
         self._recompute()
+
+    async def _choose(self, module_id: str, key: str, title: str) -> None:
+        try:
+            folder = await self._choose_folder(title)
+            self._folder_error = ""
+        except Exception as e:
+            log.warning("Could not open the folder dialog: %s", e)
+            self._folder_error = str(e) or type(e).__name__
+            self._emit()
+            return
+        if folder:
+            self._set_module_settings(module_id, {key: folder})
+        self._emit()
 
     def _set_close_hint_shown(self) -> None:
         if not self.config.close_hint_shown:
@@ -368,6 +389,7 @@ class Engine:
             autostart_error=self._autostart_error,
             setup_done=self.config.setup_done,
             close_hint_shown=self.config.close_hint_shown,
+            folder_error=self._folder_error,
         )
 
     def _emit(self) -> None:
