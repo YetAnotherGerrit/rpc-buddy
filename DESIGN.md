@@ -386,6 +386,24 @@ then Flathub.
 - ✅ Security review (§13) and performance tuning (§14)
 - ⏳ Daily use and feedback from testers
 - ⏳ Before going public: review the whole history, repository description
+- ⏳ Before publishing on Flathub — store listing (`flatpak/*.metainfo.xml`):
+  - **Description tone (wanted):** start from the user's problem, casual and
+    honest, e.g. *"You run Discord as a Flatpak and it doesn't show the game
+    you're playing? There are lots of ways to fix that — RPC Buddy aims to be
+    one of the easiest: install it, start it once, done."* Then what it shows
+    (Steam games with official name and artwork, music, side by side) and
+    what makes it comfortable (setup check, tray, hide list, Steam's
+    Invisible status).
+  - Shorter summary (~35 characters), e.g. "Show your games and music on
+    Discord".
+  - Screenshots (required by Flathub) with captions, made with made-up games
+    and songs, light and dark, hosted in the public repo.
+  - `developer id` in lowercase (`io.github.yetanothergerrit`); links for
+    bug tracker and source code; `<branding>` colours; check the OARS age
+    rating (sharing activity with Discord → `social-info`?); release notes per
+    version.
+  - Run `appstreamcli validate --pedantic` and Flathub's
+    `flatpak-builder-lint` (via `org.flatpak.Builder`).
 
 ## 12. Open questions
 
