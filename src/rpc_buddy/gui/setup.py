@@ -156,8 +156,10 @@ class SetupDialog(QDialog):
 
         buttons = QDialogButtonBox()
         recheck = buttons.addButton("Check again", QDialogButtonBox.ButtonRole.ActionRole)
+        recheck.setIcon(style.theme_icon("view-refresh"))
         recheck.clicked.connect(self._render)
         done = buttons.addButton("Done", QDialogButtonBox.ButtonRole.AcceptRole)
+        done.setIcon(style.theme_icon("dialog-ok-apply", "dialog-ok"))
         done.setDefault(True)
         buttons.accepted.connect(self.accept)
         layout.addWidget(buttons)

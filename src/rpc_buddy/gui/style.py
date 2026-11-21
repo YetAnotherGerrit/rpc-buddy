@@ -7,7 +7,7 @@ current palette and the stylesheet is rebuilt when the desktop switches.
 import html
 from dataclasses import dataclass
 
-from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtGui import QColor, QFont, QIcon, QPalette
 from PySide6.QtWidgets import QWidget
 
 GREEN = "#2ea043"
@@ -22,9 +22,6 @@ ERROR = ("✖", RED)
 INFO = ("ℹ", BLUE)
 BUSY = ("…", GREY)
 OFF = ("○", GREY)
-
-
-DANGER = "#da373c"
 
 
 def mix(a: QColor, b: QColor, t: float) -> QColor:
@@ -113,11 +110,6 @@ def stylesheet(t: Theme) -> str:
     }}
     QPushButton#Chip {{ border-radius: 14px; padding: 4px 12px; }}
     QPushButton#Soft:hover, QPushButton#Chip:hover {{ background: {t.hover}; }}
-    QPushButton#Danger {{
-        background: {DANGER}; color: white; border: none; border-radius: 8px;
-        padding: 6px 14px; font-weight: 600;
-    }}
-    QPushButton#Danger:hover {{ background: #c42f34; }}
     QPushButton#Link {{
         background: transparent; color: {t.link}; border: none; padding: 6px 0;
     }}
@@ -130,6 +122,15 @@ def stylesheet(t: Theme) -> str:
     }}
     QProgressBar#Track::chunk {{ background: {t.text}; border-radius: 2px; }}
     """
+
+
+def theme_icon(*names: str) -> QIcon:
+    """The first icon of the desktop theme that exists, or an empty icon."""
+    for name in names:
+        icon = QIcon.fromTheme(name)
+        if not icon.isNull():
+            return icon
+    return QIcon()
 
 
 def scaled_font(widget: QWidget, factor: float = 1.0, bold: bool = False) -> QFont:
