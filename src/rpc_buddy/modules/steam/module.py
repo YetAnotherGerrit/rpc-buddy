@@ -126,7 +126,7 @@ class SteamModule(Module):
         try:
             discord_game = await self.ctx.detectable.lookup(DISTRIBUTOR, game.appid)
         except Exception as e:  # noqa: BLE001 - network errors etc.
-            log.warning("Could not look up Steam app %s: %s", game.appid, e)
+            log.warning("Could not look up the game in Discord's list: %s", e)
             self.ctx.publish(None)
             self.ctx.set_health(
                 Health(
@@ -140,7 +140,7 @@ class SteamModule(Module):
             return
 
         if discord_game is None:
-            log.info("Steam app %s is not known to Discord, not shown", game.appid)
+            log.debug("Steam app %s is not known to Discord, not shown", game.appid)
             self.ctx.publish(None)
             self.ctx.set_health(
                 Health(HealthState.OK, f"Steam app {game.appid} is unknown to Discord")
@@ -148,7 +148,7 @@ class SteamModule(Module):
             return
 
         withheld = INVISIBLE_REASON if hidden_by_steam else ""
-        log.info(
+        log.debug(
             "Playing %s (Steam %s, Discord %s)%s",
             discord_game.name,
             game.appid,

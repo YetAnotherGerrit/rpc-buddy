@@ -157,7 +157,8 @@ class DiscordSink:
 
         for cid, conn in list(self._conns.items()):
             if not conn.is_alive():
-                log.info("Discord connection for %s was lost", cid)
+                log.info("A Discord connection was lost")
+                log.debug("Lost connection was for application %s", cid)
                 self._drop(cid)
 
         for cid in list(self._conns):
@@ -179,7 +180,8 @@ class DiscordSink:
                     conn = self._factory(cid)
                     await conn.open()
                     self._conns[cid] = conn
-                    log.info("Connected to Discord as application %s", cid)
+                    log.info("Connected to Discord")
+                    log.debug("Connected as application %s", cid)
                 await conn.set_activity(activity)
                 self._applied[cid] = activity
                 self._last_sent[cid] = time.monotonic()

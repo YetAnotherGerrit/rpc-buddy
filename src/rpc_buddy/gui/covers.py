@@ -13,6 +13,19 @@ from rpc_buddy.detectable import USER_AGENT
 log = logging.getLogger(__name__)
 
 MAX_CACHED = 50
+MAX_BYTES = 5 * 1024 * 1024  # covers are small; anything bigger is refused
+TIMEOUT_MS = 15_000
+
+
+def image_format(data: bytes) -> str | None:
+    """Only the formats covers come in; everything else is refused."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "PNG"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "JPEG"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "WEBP"
+    return None
 
 
 class CoverLoader(QObject):
@@ -38,14 +51,26 @@ class CoverLoader(QObject):
         self._waiting[url] = [callback]
         request = QNetworkRequest(QUrl(url))
         request.setHeader(QNetworkRequest.KnownHeaders.UserAgentHeader, USER_AGENT)
+        request.setTransferTimeout(TIMEOUT_MS)
         reply = self._network.get(request)
+        reply.downloadProgress.connect(lambda received, _total: self._limit(reply, received))
         reply.finished.connect(lambda: self._finished(url, reply))
+
+    @staticmethod
+    def _limit(reply: QNetworkReply, received: int) -> None:
+        if received > MAX_BYTES:
+            reply.abort()
 
     def _finished(self, url: str, reply: QNetworkReply) -> None:
         callbacks = self._waiting.pop(url, [])
         pixmap = QPixmap()
         if reply.error() == QNetworkReply.NetworkError.NoError:
-            pixmap.loadFromData(bytes(reply.readAll()))
+            data = bytes(reply.readAll())
+            fmt = image_format(data) if len(data) <= MAX_BYTES else None
+            if fmt:
+                pixmap.loadFromData(data, fmt)
+            else:
+                log.debug("Ignoring cover %s: not a small PNG/JPEG/WebP", url)
         else:
             log.debug("Could not load cover %s: %s", url, reply.errorString())
         reply.deleteLater()

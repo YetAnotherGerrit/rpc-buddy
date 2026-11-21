@@ -56,8 +56,12 @@ _KINDS = {
 _SOURCE_ICONS = {"steam": ("input-gaming", "▶"), "mpris": ("audio-x-generic", "♫")}
 
 
-def _label(text: str = "", name: str = "", wrap: bool = False) -> QLabel:
-    label = QLabel(text)
+def _label(text: str = "", name: str = "", wrap: bool = False, rich: bool = False) -> QLabel:
+    """A label. Plain text unless ``rich`` — titles etc. can come from websites
+    (via the browser's MPRIS), and must never be interpreted as HTML."""
+    label = QLabel()
+    label.setTextFormat(Qt.TextFormat.RichText if rich else Qt.TextFormat.PlainText)
+    label.setText(text)
     if name:
         label.setObjectName(name)
     label.setWordWrap(wrap)
@@ -263,7 +267,9 @@ class ModuleSettingsDialog(QDialog):
         health = status.health
         if health.hint and not health.ok:
             hint = _label(
-                style.status_html(_SYMBOLS[health.state], health.message, health.hint), wrap=True
+                style.status_html(_SYMBOLS[health.state], health.message, health.hint),
+                wrap=True,
+                rich=True,
             )
             hint.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             layout.addWidget(hint)
@@ -524,7 +530,7 @@ class MainWindow(QMainWindow):
             )
         else:
             text = f"Closing this window quits {APP_NAME} — your activity disappears from Discord."
-        hint = _label(style.status_html(style.INFO, text), "Muted", wrap=True)
+        hint = _label(style.status_html(style.INFO, text), "Muted", wrap=True, rich=True)
         hint.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(hint)
 

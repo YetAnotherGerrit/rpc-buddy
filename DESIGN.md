@@ -370,3 +370,28 @@ then Flathub.
 - How does Spotify appear in the member list for most users? (Decides the
   default of the music status line, §4.)
 - Untested: GNOME, Flatpak Steam, Discord Canary / Snap, aarch64.
+
+## 13. Security assessment (2026-11)
+
+**Threat model.** RPC Buddy runs in a narrow Flatpak sandbox, opens no
+network ports and executes nothing it downloads. The only data an outsider
+controls are music titles/artists/albums (and cover URLs) of tracks played on
+**websites** — the browser passes the site's metadata on via MPRIS.
+
+Scans: Bandit (only false positives: fixed-URL `urlopen`, an `assert`, an
+intentional `try/except: pass`), pip-audit on the locked dependencies (no
+known vulnerabilities). Python wheels are pinned with SHA-256 in the manifest
+and in `uv.lock`.
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | Titles shown in Qt labels could be rendered as HTML (UI spoofing, local images) | Fixed: labels are plain text unless they show our own escaped status HTML |
+| 2 | Covers loaded from any https URL without limits | Fixed: PNG/JPEG/WebP only (checked by signature), ≤ 5 MB, 15 s timeout |
+| 3 | Game names / app ids logged at info level (may persist in the journal) | Fixed: only with `--debug` |
+| 4 | Tray tooltip contained titles (rendered by the desktop, possibly as HTML) | Fixed: general status only; `&` escaped in menu entries |
+| 5 | Autostart entry outside the Flatpak: unescaped path in `Exec=` | Accepted (development only) |
+| 6 | Whatever a website sets as title appears in the Discord status | Inherent; hide list and pause |
+
+Rules for new code: show external text as plain text; never load or execute
+anything from activity data beyond the checks above; keep names, titles and
+ids out of info-level logs.

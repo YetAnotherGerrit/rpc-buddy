@@ -1,5 +1,6 @@
 """First-run setup check dialog."""
 
+import html
 from collections.abc import Callable
 
 from PySide6.QtCore import Qt, QTimer
@@ -29,7 +30,9 @@ _SYMBOLS = {CheckState.OK: style.OK, CheckState.WARNING: style.WARNING, CheckSta
 
 
 def _label(text: str, *, bold: bool = False) -> QLabel:
-    label = QLabel(f"<b>{text}</b>" if bold else text)
+    label = QLabel()
+    label.setTextFormat(Qt.TextFormat.RichText if bold else Qt.TextFormat.PlainText)
+    label.setText(f"<b>{html.escape(text)}</b>" if bold else text)
     label.setWordWrap(True)
     label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
     return label

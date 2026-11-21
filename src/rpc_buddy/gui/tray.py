@@ -20,6 +20,20 @@ def app_icon() -> QIcon:
     return QIcon.fromTheme(APP_ID, fallback)
 
 
+def tooltip_text(state: EngineState) -> str:
+    """A short, general status for the tray tooltip (no titles)."""
+    if state.paused:
+        status = "Paused — nothing is shown on Discord"
+    else:
+        count = len(state.shown)
+        status = {0: "Nothing on Discord"}.get(
+            count, f"{count} {'activity' if count == 1 else 'activities'} on Discord"
+        )
+    if not state.discord.ok:
+        status += f"\n⚠ {state.discord.message or 'Discord not reachable'}"
+    return f"{APP_NAME}\n{status}"
+
+
 class EngineBridge(QObject):
     """Delivers engine state (emitted in the core thread) to the GUI thread."""
 
@@ -66,7 +80,8 @@ class Tray(QObject):
             discord = f"⚠ {discord}"
         lines.append(discord)
         for line in lines:
-            self._menu.addAction(line).setEnabled(False)
+            # Titles can contain "&", which Qt would treat as a shortcut marker.
+            self._menu.addAction(line.replace("&", "&&")).setEnabled(False)
 
         self._menu.addSeparator()
         pause = QAction("Pause presence", self._menu, checkable=True, checked=state.paused)
@@ -86,4 +101,6 @@ class Tray(QObject):
         self._menu.addAction(f"Open {APP_NAME}…", self._open_window)
         self._menu.addAction("Quit", self._quit_app)
 
-        self._icon.setToolTip(f"{APP_NAME}\n" + "\n".join(lines))
+        # No titles in the tooltip: it is rendered by the desktop (possibly as
+        # HTML) and shows up on mere hover.
+        self._icon.setToolTip(tooltip_text(state))
