@@ -86,6 +86,8 @@ Your configuration stays in
 - Games that Discord doesn't know are not shown.
 - Music cover art only appears if the player provides it as a web link;
   browsers usually only provide a local file, which Discord can't show.
+  RPC Buddy deliberately doesn't look covers up online — that would send what
+  you listen to to a third party.
 - Only the official Discord clients are supported.
 
 ## Troubleshooting

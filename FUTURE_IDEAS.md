@@ -23,10 +23,22 @@ playing Deezer web points to a cached image inside its own data folder),
 which Discord cannot display. Discord does accept external https images (it
 proxies them via `mp:external/…`).
 
-Idea: look up the cover by artist/album/title from an online service.
-Compare candidate services/libraries first (e.g. Cover Art Archive /
-MusicBrainz, Deezer's public API, iTunes Search API) — coverage, rate
-limits, terms of use, need for API keys.
+**Decided (2026-11): no online cover lookups.** Looking covers up by
+artist/title (Deezer search API, MusicBrainz + Cover Art Archive, iTunes)
+would send what the user listens to to a third party — not worth it.
+Without a cover, Discord shows the RPC Buddy app icon.
+
+Ideas that need no lookup, in case covers come up again:
+
+- **YouTube / YouTube Music in a browser**: the page URL contains the video
+  id (`watch?v=<id>`), so `https://i.ytimg.com/vi/<id>/hqdefault.jpg` is the
+  cover (4:3 with bars for album art). Verified 2026-11. Other web players
+  (Deezer, TIDAL, Spotify, Apple Music) report the current page, not the
+  track, so this doesn't work for them.
+- **Plasma Browser Integration** (KDE): its extension republishes a page's
+  Media Session — probably including the original https cover — as the MPRIS
+  player `plasma-browser-integration`. Not verified; may not work with a
+  Flatpak browser.
 
 ## `registry.vdf` as an additional Steam detector
 

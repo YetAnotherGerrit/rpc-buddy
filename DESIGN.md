@@ -184,9 +184,10 @@ large image = cover (or icon).
   position/length, `status_display` as configured. Discord needs 2–128
   characters per text field; shorter/longer values are padded/cut.
 - Cover art: `mpris:artUrl` only if it is https (Discord proxies external
-  images). Browsers usually only provide a local `file://` cover → online
-  lookup is deferred, see FUTURE_IDEAS.md. Without a cover, Discord should
-  show the RPC Buddy app icon instead (not verified yet).
+  images). Browsers usually only provide a local `file://` cover. **No online
+  cover lookups** — they would send what the user listens to to a third party
+  (decided 2026-11, see FUTURE_IDEAS.md). Without a cover, Discord should show
+  the RPC Buddy app icon instead (not verified yet).
 
 ## 7. Discord connection
 
