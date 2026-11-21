@@ -161,8 +161,12 @@ as Discord Rich Presence through Discord's local IPC socket.
 Identity mapping: the shared, store-agnostic **DetectableCache** service
 (`detectable.py`) downloads
 `https://discord.com/api/v10/applications/detectable` (~13 MB, ~25k apps) at
-most once a day and stores a compact index
-`distributor → sku id → (discord_app_id, name, icon_hash, cover_image_hash)`.
+most once a day **in a short-lived child process**
+(`python -m rpc_buddy.detectable --refresh <db>`) that writes an SQLite
+database (~5 MB) `games(distributor, sku → discord_app_id, name, icon_hash,
+cover_image_hash)`; the app only queries single rows. Parsing the JSON in the
+app itself would leave it ~60 MB bigger for good (Python keeps freed memory;
+`malloc_trim` doesn't help) — see §14.
 Distributors in the list (2026-11): steam ~20k, xbox ~8k, epic ~2.6k,
 google_play ~1.7k, gog 64, uplay, battlenet, microsoft. The Steam module looks
 up `("steam", appid)`; future modules (e.g. Heroic → epic/gog) use their own
@@ -255,7 +259,7 @@ bus must not be disabled (`flatpak run --sandbox` breaks MPRIS and the tray).
 Autostart uses the XDG Background portal, which needs no extra permission.
 
 Files: config `$XDG_CONFIG_HOME/rpc-buddy/config.toml`, cache (game list
-index) `$XDG_CACHE_HOME/rpc-buddy/` — inside the Flatpak under
+database `detectable.sqlite3`) `$XDG_CACHE_HOME/rpc-buddy/` — inside the Flatpak under
 `~/.var/app/io.github.YetAnotherGerrit.RpcBuddy/`.
 
 ### 8.3 Test builds for friends
@@ -362,6 +366,7 @@ then Flathub.
 - ✅ Redesigned main window ("Now on Discord"), clearer close/quit
 - ✅ Respect Steam's Invisible / Offline status
 - ✅ Pause shows a preview of the activities (hide before publishing)
+- ✅ Security review (§13) and performance tuning (§14)
 - ⏳ Daily use and feedback from testers
 - ⏳ Before going public: review the whole history, repository description
 
@@ -395,3 +400,27 @@ and in `uv.lock`.
 Rules for new code: show external text as plain text; never load or execute
 anything from activity data beyond the checks above; keep names, titles and
 ids out of info-level logs.
+
+## 14. Performance (2026-11)
+
+Goal: negligible background impact on a gaming PC. Measured in the Flatpak,
+idle in the tray (KDE Plasma):
+
+| | Value |
+|---|---|
+| CPU | ~0 (0.08 % of one core before the changes below, 0 ticks in 30 s after) |
+| Memory (RSS) | ~109 MB, of which ~70 MB are shared libraries (Qt, Python) |
+| Wakeups | GUI thread 0/s in the tray; core thread ~2/s (Steam log + status every 1 s, MPRIS every 2 s) |
+| For comparison | Discord ~1.5 GB, Steam ~0.5 GB + steamwebhelper ~1.8 GB |
+
+Decisions:
+
+- **Game list in a child process + SQLite** (see §6.1): saves ~75 MB after the
+  first game / daily refresh.
+- **Main window and setup dialog built on first open**: ~17 MB less when
+  started into the tray (autostart).
+- **No GUI timers while hidden**: the card timer runs only while the window
+  is visible; Ctrl+C/SIGTERM use `signal.set_wakeup_fd` + `QSocketNotifier`
+  instead of a polling timer.
+- Not done (little gain for more code or risk): `inotify` instead of polling
+  the Steam log, MPRIS signals instead of polling, a smaller toolkit than Qt.

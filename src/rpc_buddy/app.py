@@ -4,6 +4,7 @@ import argparse
 import contextlib
 import logging
 import signal
+import socket
 import sys
 
 from rpc_buddy import APP_ID, APP_NAME, __version__
@@ -40,7 +41,7 @@ def run_headless(config: Config) -> int:
 
 
 def run_gui(config: Config, background: bool) -> int:
-    from PySide6.QtCore import QTimer
+    from PySide6.QtCore import QSocketNotifier, QTimer
     from PySide6.QtWidgets import QApplication
 
     from rpc_buddy.gui.setup import SetupDialog
@@ -67,21 +68,39 @@ def run_gui(config: Config, background: bool) -> int:
 
     bridge = EngineBridge()
     engine = Engine(config, on_state=bridge.state_changed.emit)
-    setup = SetupDialog(
-        None,
-        environment=lambda: detect_environment(has_tray),
-        on_done=engine.set_setup_done,
-        set_spotify_answer=lambda answer: engine.set_module_settings(
-            "mpris", {"include_spotify": answer == "via_buddy", "spotify_answer": answer}
-        ),
-    )
+
+    # The main window and the setup dialog are only built when first opened:
+    # started in the background (autostart), that saves ~17 MB.
+    last_state = None
+    window = None
+    setup = None
+    tray = None
+
+    def remember(state) -> None:
+        nonlocal last_state
+        last_state = state
+
+    def get_setup() -> SetupDialog:
+        nonlocal setup
+        if setup is None:
+            setup = SetupDialog(
+                None,
+                environment=lambda: detect_environment(has_tray),
+                on_done=engine.set_setup_done,
+                set_spotify_answer=lambda answer: engine.set_module_settings(
+                    "mpris", {"include_spotify": answer == "via_buddy", "spotify_answer": answer}
+                ),
+            )
+            if last_state is not None:
+                setup.on_state(last_state)
+            bridge.state_changed.connect(setup.on_state)
+        return setup
 
     def open_setup() -> None:
-        setup.show()
-        setup.raise_()
-        setup.activateWindow()
-
-    tray = None
+        dialog = get_setup()
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
 
     def first_hide() -> None:
         tray.notify(
@@ -91,34 +110,45 @@ def run_gui(config: Config, background: bool) -> int:
         )
         engine.set_close_hint_shown()
 
-    window = MainWindow(
-        engine,
-        quit_app=app.quit,
-        keep_running=has_tray,
-        open_setup=open_setup,
-        on_first_hide=first_hide,
-    )
-    tray = Tray(engine, open_window=window.show_and_raise, quit_app=app.quit)
-    bridge.state_changed.connect(window.on_state)
+    def open_window() -> None:
+        nonlocal window
+        if window is None:
+            window = MainWindow(
+                engine,
+                quit_app=app.quit,
+                keep_running=has_tray,
+                open_setup=open_setup,
+                on_first_hide=first_hide,
+            )
+            if last_state is not None:
+                window.on_state(last_state)
+            bridge.state_changed.connect(window.on_state)
+        window.show_and_raise()
+
+    bridge.state_changed.connect(remember)
+    tray = Tray(engine, open_window=open_window, quit_app=app.quit)
     bridge.state_changed.connect(tray.on_state)
-    bridge.state_changed.connect(setup.on_state)
-    instance.show_requested.connect(window.show_and_raise)
+    instance.show_requested.connect(open_window)
 
     first_run = not config.setup_done
     engine.start_in_thread()
     app.aboutToQuit.connect(engine.stop)
     if not (background and has_tray):
-        window.show_and_raise()
+        open_window()
     if first_run:
         # Give the modules a moment to report their status before showing it.
         QTimer.singleShot(1500, open_setup)
 
-    # Let Python handle Ctrl+C while Qt's event loop is running.
+    # Let Python handle Ctrl+C/SIGTERM while Qt's event loop runs, without
+    # waking up periodically: the signal writes to a socket Qt watches.
     signal.signal(signal.SIGINT, lambda *_: app.quit())
     signal.signal(signal.SIGTERM, lambda *_: app.quit())
-    timer = QTimer()
-    timer.timeout.connect(lambda: None)
-    timer.start(500)
+    wake_read, wake_write = socket.socketpair()
+    wake_read.setblocking(False)
+    wake_write.setblocking(False)
+    signal.set_wakeup_fd(wake_write.fileno())
+    notifier = QSocketNotifier(wake_read.fileno(), QSocketNotifier.Type.Read)
+    notifier.activated.connect(lambda: wake_read.recv(64))
 
     return app.exec()
 

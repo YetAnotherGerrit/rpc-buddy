@@ -443,9 +443,10 @@ class MainWindow(QMainWindow):
         central_layout.addWidget(self._make_footer())
         self.setCentralWidget(central)
 
+        # Runs only while the window is visible (no wakeups in the tray).
         self._timer = QTimer(self)
+        self._timer.setInterval(1000)
         self._timer.timeout.connect(self._tick)
-        self._timer.start(1000)
         self._apply_theme()
 
     # --- building blocks --------------------------------------------------
@@ -639,9 +640,17 @@ class MainWindow(QMainWindow):
             )
 
     def _tick(self) -> None:
-        if self.isVisible():
-            for card in self._cards.values():
-                card.tick()
+        for card in self._cards.values():
+            card.tick()
+
+    def showEvent(self, event) -> None:  # noqa: N802 - Qt API
+        super().showEvent(event)
+        self._tick()
+        self._timer.start()
+
+    def hideEvent(self, event) -> None:  # noqa: N802 - Qt API
+        super().hideEvent(event)
+        self._timer.stop()
 
     # --- theme ------------------------------------------------------------
 
