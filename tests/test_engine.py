@@ -155,3 +155,13 @@ def test_close_hint_is_shown_once_and_saved(tmp_path):
     engine._set_close_hint_shown()
     assert engine.state().close_hint_shown is True
     assert Config.load(tmp_path / "config.toml").close_hint_shown is True
+
+
+def test_withheld_activity_stays_off_discord_but_visible(tmp_path):
+    engine, sink = make_engine(tmp_path)
+    engine.publish("dummy", Activity(client_id="game"), "Playing X", withheld="reason")
+    assert sink.desired == {}
+    m = engine.state().modules[0]
+    assert m.activity is not None and not m.on_discord
+    assert m.off_discord_reason == "reason"
+    assert engine.state().shown == []

@@ -50,16 +50,19 @@ class ModuleContext:
         summary: str = "",
         hide_key: str | None = None,
         hide_label: str | None = None,
+        withheld: str = "",
     ) -> None:
         """Show ``activity`` (or nothing, if None).
 
         ``summary`` is shown in the UI. ``hide_key`` (e.g. ``"steam:<appid>"``)
         lets the user hide this kind of activity; ``hide_label`` names it.
+        ``withheld`` (a short reason, e.g. "you're invisible on Steam") keeps the
+        activity off Discord but still shows it, greyed out, in the main window.
         """
         from rpc_buddy.engine import Item
 
         item = Item(hide_key, hide_label or hide_key) if hide_key else None
-        self._engine.publish(self._module_id, activity, summary, item)
+        self._engine.publish(self._module_id, activity, summary, item, withheld)
 
     def set_health(self, health: Health) -> None:
         self._engine.set_health(self._module_id, health)

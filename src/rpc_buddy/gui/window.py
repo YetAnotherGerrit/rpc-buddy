@@ -152,13 +152,18 @@ class ActivityCard(QFrame):
         self._button.clicked.connect(self._toggle_hidden)
         layout.addWidget(self._button, 0, Qt.AlignmentFlag.AlignVCenter)
 
+        # Laid over the dimmed content when the activity is not sent to Discord.
+        self._overlay = _label(name="Overlay")
+        self._overlay.setParent(self)
+        self._overlay.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._overlay.hide()
+
     def update_status(self, m: ModuleStatus) -> None:
         self._status = m
         a = m.activity
         music = a.type == ActivityType.LISTENING
         source = a.name or m.name
-        label = "HIDDEN" if m.hidden else _KINDS.get(a.type, "PLAYING")
-        self._kind.setText(f"{label} · {source.upper()}")
+        self._kind.setText(f"{_KINDS.get(a.type, 'PLAYING')} · {source.upper()}")
         self._title.setText(a.details or a.large_text or m.summary)
         self._subtitle.setText(a.state or "")
         self._subtitle.setVisible(bool(a.details and a.state))
@@ -179,13 +184,41 @@ class ActivityCard(QFrame):
             if m.hidden
             else "Keep this off Discord. You can show it again under Hidden."
         )
-        if m.hidden:
-            effect = QGraphicsOpacityEffect(self._content)
-            effect.setOpacity(0.5)
-            self._content.setGraphicsEffect(effect)
-        else:
+        if m.on_discord:
             self._content.setGraphicsEffect(None)
+            self._overlay.hide()
+        else:
+            effect = QGraphicsOpacityEffect(self._content)
+            effect.setOpacity(0.35)
+            self._content.setGraphicsEffect(effect)
+            self._overlay.setText(f"Not on Discord — {m.off_discord_reason}")
+            self._overlay.show()
+            self._place_overlay()
+            QTimer.singleShot(0, self._place_overlay)  # again once the layout has settled
         self.tick()
+
+    def _place_overlay(self) -> None:
+        """Centre the overlay over the card's content (left of the button)."""
+        area = self._content.geometry()
+        self._overlay.adjustSize()
+        width = min(self._overlay.width(), area.width())
+        self._overlay.setGeometry(
+            area.x() + (area.width() - width) // 2,
+            area.y() + (area.height() - self._overlay.height()) // 2,
+            width,
+            self._overlay.height(),
+        )
+        self._overlay.raise_()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt API
+        super().resizeEvent(event)
+        if not self._overlay.isHidden():
+            self._place_overlay()
+
+    def showEvent(self, event) -> None:  # noqa: N802 - Qt API
+        super().showEvent(event)
+        if not self._overlay.isHidden():
+            QTimer.singleShot(0, self._place_overlay)
 
     def _cover_loaded(self, url: str, pixmap) -> None:
         if url == self._cover_url:

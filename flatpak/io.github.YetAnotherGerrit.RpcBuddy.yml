@@ -20,6 +20,9 @@ finish-args:
   # Steam logs (native and Flatpak Steam), read-only
   - --filesystem=~/.local/share/Steam/logs:ro
   - --filesystem=~/.var/app/com.valvesoftware.Steam/.local/share/Steam/logs:ro
+  # Steam's own online status (Invisible/Offline) in userdata/<id>/config/localconfig.vdf
+  - --filesystem=~/.local/share/Steam/userdata:ro
+  - --filesystem=~/.var/app/com.valvesoftware.Steam/.local/share/Steam/userdata:ro
   # Music players (MPRIS)
   - --talk-name=org.mpris.MediaPlayer2.*
   # Tray icon (inside the sandbox the app's PID is always 2)

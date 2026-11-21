@@ -42,6 +42,7 @@ class Publication:
     activity: Activity | None
     summary: str
     item: Item | None
+    withheld: str = ""  # reason why the module keeps it off Discord (shown in the UI)
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,17 @@ class ModuleStatus:
     settings: tuple[Setting, ...]
     values: dict[str, Any]
     item: Item | None = None  # what "Hide" would hide for the current activity
+    withheld: str = ""  # why the module keeps the activity off Discord, if it does
+
+    @property
+    def on_discord(self) -> bool:
+        return self.activity is not None and not self.hidden and not self.withheld
+
+    @property
+    def off_discord_reason(self) -> str:
+        if self.hidden:
+            return "hidden by you"
+        return self.withheld
 
 
 @dataclass(frozen=True)
@@ -74,7 +86,7 @@ class EngineState:
         """Modules whose activity is currently published."""
         if self.paused:
             return []
-        return [m for m in self.modules if m.activity is not None and not m.hidden]
+        return [m for m in self.modules if m.activity is not None and m.on_discord]
 
 
 class Engine:
@@ -175,9 +187,16 @@ class Engine:
     # --- called by modules (engine thread) ---------------------------------
 
     def publish(
-        self, module_id: str, activity: Activity | None, summary: str, item: Item | None = None
+        self,
+        module_id: str,
+        activity: Activity | None,
+        summary: str,
+        item: Item | None = None,
+        withheld: str = "",
     ) -> None:
-        self._published[module_id] = Publication(time.monotonic(), activity, summary, item)
+        self._published[module_id] = Publication(
+            time.monotonic(), activity, summary, item, withheld
+        )
         self._recompute()
 
     def set_health(self, module_id: str, health: Health) -> None:
@@ -307,7 +326,7 @@ class Engine:
             newest: dict[str, float] = {}
             for pub in self._published.values():
                 activity = pub.activity
-                if activity is None or self._is_hidden(pub):
+                if activity is None or pub.withheld or self._is_hidden(pub):
                     continue
                 if pub.timestamp >= newest.get(activity.client_id, -1.0):
                     newest[activity.client_id] = pub.timestamp
@@ -329,6 +348,7 @@ class Engine:
                     activity=pub.activity,
                     summary=pub.summary,
                     hidden=self._is_hidden(pub),
+                    withheld=pub.withheld,
                     settings=tuple(cls.settings),
                     values=dict(self.config.module_settings(module_id)),
                     item=pub.item,

@@ -94,6 +94,10 @@ def stylesheet(t: Theme) -> str:
     QLabel#Section, QLabel#Kind {{ color: {t.muted}; font-weight: 700; }}
     QLabel#Muted {{ color: {t.muted}; }}
     QLabel#Elapsed {{ color: {GREEN}; font-weight: 600; }}
+    QLabel#Overlay {{
+        background: {t.window}; color: {t.text}; border: 1px solid {t.border};
+        border-radius: 8px; padding: 6px 12px; font-weight: 600;
+    }}
     QLabel#IconTile {{ background: {t.raised}; border-radius: 8px; }}
     QLabel#BadgeOk {{
         background: {t.ok_bg}; color: {t.ok_fg}; border-radius: 12px;

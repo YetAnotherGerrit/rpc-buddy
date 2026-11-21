@@ -20,6 +20,8 @@ itself.
 - **Main window** shows what's on Discord right now, like Discord's own
   activity cards — with **Hide** on each card for games or music sources you
   want to keep private. Follows your desktop's light/dark theme.
+- **Respects Steam's Invisible status**: while you're invisible or offline on
+  Steam, your game isn't shown on Discord either (can be switched off).
 - **Tray icon** (KDE Plasma and other desktops with a system tray) with the
   current activity, pause and module switches. Closing the window keeps RPC
   Buddy running there; **Quit** in the window or tray menu stops it.
@@ -64,6 +66,7 @@ Buddy starts automatically from then on.
 | What | How |
 |---|---|
 | Running Steam game | Read from Steam's own log file (`logs/console_log.txt`), read-only. No Steam account, API key or network access needed. |
+| Steam online status | Read from Steam's local settings file (`userdata/…/config/localconfig.vdf`), read-only — only to notice Invisible / Offline. |
 | Game name and artwork | Discord's public list of games it can detect, downloaded at most once a day and cached. |
 | Music | Read from the MPRIS interface that music players offer on the desktop session bus. |
 | Showing it on Discord | Sent only to the Discord client running on your computer, over its local connection (IPC). |
@@ -102,12 +105,16 @@ Open the main window (tray icon, or start RPC Buddy again) and click
   flatpak override --user --filesystem=xdg-run/discord-ipc-0 io.github.YetAnotherGerrit.RpcBuddy
   ```
 
-- **Steam installed in an unusual place**: allow RPC Buddy to read Steam's
-  logs folder:
+- **Steam installed in an unusual place**: enter Steam's folder (the one that
+  contains `logs` and `userdata`) under Steam's ⚙ in the main window, allow
+  RPC Buddy to read it (adjust the path), then restart RPC Buddy:
 
   ```bash
-  flatpak override --user --filesystem=/path/to/Steam/logs:ro io.github.YetAnotherGerrit.RpcBuddy
+  flatpak override --user --filesystem=/path/to/Steam/logs:ro \
+      --filesystem=/path/to/Steam/userdata:ro io.github.YetAnotherGerrit.RpcBuddy
   ```
+
+  The setup check shows this command with your folder filled in.
 
 - **Logs**: run `flatpak run io.github.YetAnotherGerrit.RpcBuddy --debug` in a
   terminal.

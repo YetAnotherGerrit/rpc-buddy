@@ -62,6 +62,7 @@ as Discord Rich Presence through Discord's local IPC socket.
 | Spotify | Opt-in setting "Include Spotify" (default off): Discord shows Spotify itself when the account is linked. The setup check asks once: linked / show via RPC Buddy / don't use Spotify. Auto-detecting the link would need OAuth with a client secret → rejected |
 | Game vs. music | Both published in parallel; Discord shows both, the game wins the status line — no own priority logic |
 | Unknown games | Not shown in v1 |
+| Steam Invisible / Offline | Game not sent to Discord (setting "Hide games while I'm invisible on Steam", default on); still shown greyed out in the main window with the reason. Needs read access to Steam's `userdata` (accepted 2026-11) |
 | Autostart | On by default (applied when the first-run setup check is closed with Done), starts with `--background` into the tray; Flatpak: XDG Background portal |
 | Hide list | Games per Steam app, music per source (player/service); hidden with "Hide" on the activity card in the main window, shown again via the card or the chips under Hidden |
 | Setup check | First-run dialog, reopenable from the main window |
@@ -107,8 +108,10 @@ as Discord Rich Presence through Discord's local IPC socket.
     module restarted after 30 s,
   - declares `settings` (`Setting`: text / choice / int / bool); the main
     window builds its form from them, a change restarts the module,
-  - calls `ctx.publish(activity, summary, hide_key, hide_label)` —
-    `hide_key` (e.g. `steam:<appid>`, `mpris:<source>`) makes it hideable,
+  - calls `ctx.publish(activity, summary, hide_key, hide_label, withheld)` —
+    `hide_key` (e.g. `steam:<appid>`, `mpris:<source>`) makes it hideable;
+    `withheld` (a short reason) keeps it off Discord but shows it greyed out
+    in the main window,
   - reports `ctx.set_health(Health)` (OK / starting / needs setup / error +
     hint) for the main window and the setup check.
 - **Activity** (`activity.py`, independent of pypresence): `client_id`,
@@ -138,10 +141,19 @@ as Discord Rich Presence through Discord's local IPC socket.
   On start, the whole current log is replayed to find a game that is already
   running. A new log (Steam restart, detected by inode/size) resets the
   state. With several games running, the most recently started one is shown.
-- Steam roots probed: `~/.local/share/Steam`, `~/.steam/steam`,
+- Steam roots probed: the folder from the setting "Steam folder" (if set),
+  then `~/.local/share/Steam`, `~/.steam/steam`,
   `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` and
   `…/com.valvesoftware.Steam/data/Steam` (the Flatpak Steam paths are not
   verified yet).
+- **Steam status** (`persona.py`): Steam's UI stores the status the user
+  picked in `userdata/<account>/config/localconfig.vdf` →
+  `UserLocalConfigStore › WebStorage › FriendStoreLocalPrefs_<account>` →
+  `"ePersonaState": n` and rewrites the file within seconds (verified
+  2026-11; not in any log). The most recently written account file is used;
+  it is re-read only when its timestamp changes. Invisible (7) or Offline (0)
+  → the game is published as *withheld* ("you're invisible on Steam").
+  Missing file or entry → treated as online.
 - Not used: `registry.vdf` `RunningAppID` — current Steam does not write it,
   not even while a game runs (E3). Not implemented: `content_log.txt`
   ("App Running") as a cross-check, Steam Web API fallback.
@@ -228,6 +240,9 @@ All narrow, no host escape:
   `xdg-run/snap.discord:ro`
 - `--filesystem=~/.local/share/Steam/logs:ro`,
   `--filesystem=~/.var/app/com.valvesoftware.Steam/.local/share/Steam/logs:ro`
+- `--filesystem=~/.local/share/Steam/userdata:ro` (+ the Flatpak Steam path):
+  Steam's online status. Flatpak permissions can't use wildcards, so this is
+  the whole `userdata` folder (read-only) although only one file is read
 - `--talk-name=org.mpris.MediaPlayer2.*`
 - `--talk-name=org.kde.StatusNotifierWatcher` and
   `--own-name=org.kde.StatusNotifierItem-2-2` (tray; inside the sandbox the
@@ -266,7 +281,9 @@ bundle replaces the old one. No automatic updates. x86_64 only so far.
   - **Now on Discord**: one card per activity — cover (game covers from
     Discord's CDN via `gui/covers.py`, otherwise a coloured placeholder),
     "PLAYING · STEAM" / "LISTENING · DEEZER", title, elapsed time or song
-    progress (updated every second), **Hide** / **Show**; an empty or
+    progress (updated every second), **Hide** / **Show**. Activities not sent
+    to Discord (hidden by the user, or withheld by a module) stay visible,
+    dimmed, with an overlay "Not on Discord — <reason>". An empty or
     "paused" card (with Resume) when nothing is shown,
   - toggle switches: pause presence, start with the desktop,
   - **Sources**: per module icon, health, ⚙ (settings dialog generated from
@@ -341,6 +358,7 @@ then Flathub.
 - ✅ Spotify opt-in with setup question
 - ✅ Single-file bundle for testers
 - ✅ Redesigned main window ("Now on Discord"), clearer close/quit
+- ✅ Respect Steam's Invisible / Offline status
 - ⏳ Daily use and feedback from testers
 - ⏳ Before going public: review the whole history, repository description
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from rpc_buddy import APP_ID
 from rpc_buddy.activity import HealthState
 from rpc_buddy.engine import EngineState
+from rpc_buddy.modules.steam.paths import override_command
 
 
 class CheckState(Enum):
@@ -73,12 +74,15 @@ def steam_check(state: EngineState) -> Check:
     if m is None or not m.enabled:
         return Check(title, CheckState.INFO, "Switched off.")
     if m.health.state is HealthState.NEEDS_SETUP:
+        folder = str(m.values.get("steam_folder") or "")
         return Check(
             title,
             CheckState.WARNING,
             "Steam's logs were not found. Start Steam once. If Steam is installed in an "
-            "unusual place, allow RPC Buddy to read its logs folder (adjust the path):",
-            command=f"flatpak override --user --filesystem=/path/to/Steam/logs:ro {APP_ID}",
+            "unusual place, enter its folder in the Steam settings (⚙) and allow RPC "
+            "Buddy to read it" + (":" if folder else " (adjust the path):"),
+            command=override_command(folder),
+            note="Restart RPC Buddy after running the command.",
         )
     if m.health.state is HealthState.ERROR:
         return Check(title, CheckState.WARNING, m.health.message, note=m.health.hint)

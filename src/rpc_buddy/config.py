@@ -26,7 +26,13 @@ DEFAULTS: dict[str, Any] = {
         "hidden": [],
     },
     "modules": {
-        "steam": {"enabled": True},
+        "steam": {
+            "enabled": True,
+            # Steam installed in an unusual place ("" = search the usual places)
+            "steam_folder": "",
+            # Don't show games while the Steam status is Invisible or Offline
+            "respect_invisible": True,
+        },
         "mpris": {
             "enabled": True,
             # Discord application id; replace with your own app to use its name/assets.

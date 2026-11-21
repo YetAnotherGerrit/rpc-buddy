@@ -90,3 +90,13 @@ def test_autostart_row():
     assert autostart_check(replace(base, autostart=False)).state is CheckState.INFO
     failed = replace(base, autostart=True, autostart_error="denied")
     assert autostart_check(failed).state is CheckState.WARNING
+
+
+def test_steam_override_uses_configured_folder():
+    from dataclasses import replace
+
+    s = state(NOT_REACHABLE, steam=Health(HealthState.NEEDS_SETUP))
+    custom = replace(s.modules[0], values={"steam_folder": "/mnt/games/Steam/"})
+    check = steam_check(replace(s, modules=(custom, s.modules[1])))
+    assert "--filesystem=/mnt/games/Steam/logs:ro" in check.command
+    assert "--filesystem=/mnt/games/Steam/userdata:ro" in check.command

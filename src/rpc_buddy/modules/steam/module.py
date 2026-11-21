@@ -4,11 +4,11 @@ import asyncio
 import logging
 from pathlib import Path
 
-from rpc_buddy import APP_ID
 from rpc_buddy.activity import Activity, ActivityType, Health, HealthState
-from rpc_buddy.module import Module
+from rpc_buddy.module import Module, Setting
 from rpc_buddy.modules.steam.logparse import GameTracker, RunningGame, parse_line
-from rpc_buddy.modules.steam.paths import find_console_log
+from rpc_buddy.modules.steam.paths import find_console_log, override_command, steam_roots
+from rpc_buddy.modules.steam.persona import PersonaWatcher, find_localconfig
 
 log = logging.getLogger(__name__)
 
@@ -19,28 +19,61 @@ _UNSET = object()  # nothing published yet
 
 DISTRIBUTOR = "steam"  # store name in Discord's game list
 
-NOT_FOUND_HINT = (
-    "Start Steam once so it creates its logs. If Steam is installed in an unusual "
-    "place, allow RPC Buddy to read its logs folder:\n"
-    f"flatpak override --user --filesystem=/path/to/Steam/logs:ro {APP_ID}"
-)
+INVISIBLE_REASON = "you're invisible on Steam"
+
+
+def not_found_hint(folder: str) -> str:
+    return (
+        "Start Steam once so it creates its logs. If Steam is installed in an unusual "
+        "place, enter its folder in the Steam settings (⚙) and allow RPC Buddy to read it:\n"
+        + override_command(folder)
+    )
 
 
 class SteamModule(Module):
     id = "steam"
     name = "Steam"
+    settings = (
+        Setting(
+            "steam_folder",
+            "Steam folder",
+            "text",
+            placeholder="Found automatically",
+            help="Only needed if Steam is installed in an unusual place: the folder that "
+            "contains Steam's logs and userdata folders.",
+        ),
+        Setting(
+            "respect_invisible",
+            "Hide games while I'm invisible on Steam",
+            "bool",
+            help="While your Steam status is Invisible or Offline, your game isn't shown "
+            "on Discord either.",
+        ),
+    )
 
-    def __init__(self, ctx):
+    def __init__(self, ctx, persona: PersonaWatcher | None = None):
         super().__init__(ctx)
         self._tracker = GameTracker()
-        self._shown: RunningGame | None | object = _UNSET
+        self._folder = str(ctx.settings.get("steam_folder") or "")
+        self._roots = steam_roots(self._folder)
+        self._persona = persona or PersonaWatcher(find=lambda: find_localconfig(self._roots))
+        self._shown: tuple[RunningGame | None, bool] | object = _UNSET
+
+    def _hidden_by_steam(self) -> bool:
+        if not self.ctx.settings.get("respect_invisible", True):
+            return False
+        return self._persona.hidden()
 
     async def run(self) -> None:
         while True:
-            path = find_console_log()
+            path = find_console_log(self._roots)
             if path is None:
                 self.ctx.set_health(
-                    Health(HealthState.NEEDS_SETUP, "Steam logs not found", NOT_FOUND_HINT)
+                    Health(
+                        HealthState.NEEDS_SETUP,
+                        "Steam logs not found",
+                        not_found_hint(self._folder),
+                    )
                 )
                 await asyncio.sleep(SEARCH_INTERVAL)
                 continue
@@ -74,16 +107,16 @@ class SteamModule(Module):
                         event = parse_line(raw.decode("utf-8", errors="replace"))
                         if event is not None:
                             self._tracker.feed(event)
-                await self._update(self._tracker.current())
+                await self._update(self._tracker.current(), self._hidden_by_steam())
                 await asyncio.sleep(POLL_INTERVAL)
         finally:
             if f is not None:
                 f.close()
 
-    async def _update(self, game: RunningGame | None) -> None:
-        if game == self._shown:
+    async def _update(self, game: RunningGame | None, hidden_by_steam: bool = False) -> None:
+        if (game, hidden_by_steam) == self._shown:
             return
-        self._shown = game
+        self._shown = (game, hidden_by_steam)
 
         if game is None:
             self.ctx.publish(None)
@@ -114,8 +147,13 @@ class SteamModule(Module):
             )
             return
 
+        withheld = INVISIBLE_REASON if hidden_by_steam else ""
         log.info(
-            "Playing %s (Steam %s, Discord %s)", discord_game.name, game.appid, discord_game.app_id
+            "Playing %s (Steam %s, Discord %s)%s",
+            discord_game.name,
+            game.appid,
+            discord_game.app_id,
+            f" — not on Discord: {withheld}" if withheld else "",
         )
         self.ctx.publish(
             Activity(
@@ -128,5 +166,9 @@ class SteamModule(Module):
             summary=f"Playing {discord_game.name}",
             hide_key=f"steam:{game.appid}",
             hide_label=discord_game.name,
+            withheld=withheld,
         )
-        self.ctx.set_health(Health(HealthState.OK, f"Playing {discord_game.name}"))
+        if withheld:
+            self.ctx.set_health(Health(HealthState.OK, f"Not on Discord — {withheld}"))
+        else:
+            self.ctx.set_health(Health(HealthState.OK, f"Playing {discord_game.name}"))
