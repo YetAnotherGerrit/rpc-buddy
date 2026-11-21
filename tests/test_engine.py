@@ -84,7 +84,7 @@ def test_hidden_item_is_not_published(tmp_path):
     item = Item("steam:1000001", "Example Quest")
     engine.publish("dummy", Activity(client_id="game"), "Playing Example Quest", item)
     assert sink.desired == {"game": Activity(client_id="game")}
-    assert engine.state().recent == (item,)
+    assert engine.state().modules[0].item == item
 
     engine._set_hidden(item, True)
     assert sink.desired == {}
@@ -92,22 +92,10 @@ def test_hidden_item_is_not_published(tmp_path):
     assert state.shown == []
     assert state.modules[0].hidden
     assert state.hidden == (item,)
-    assert state.recent == ()  # hidden items are not offered again
     assert Config.load(tmp_path / "config.toml").hidden_keys == {"steam:1000001"}
 
     engine._set_hidden(item, False)
     assert sink.desired == {"game": Activity(client_id="game")}
-
-
-def test_recent_is_newest_first_and_bounded(tmp_path):
-    from rpc_buddy.engine import MAX_RECENT, Item
-
-    engine, _ = make_engine(tmp_path)
-    for i in range(MAX_RECENT + 5):
-        engine.publish("dummy", Activity(client_id="x"), "", Item(f"steam:{i}", f"Game {i}"))
-    recent = engine.state().recent
-    assert len(recent) == MAX_RECENT
-    assert recent[0].key == f"steam:{MAX_RECENT + 4}"
 
 
 def test_module_setting_is_saved(tmp_path):
@@ -159,3 +147,11 @@ def test_overlapping_restarts_leave_one_running_module(tmp_path):
         await engine._stop_module("dummy")
 
     asyncio.run(go())
+
+
+def test_close_hint_is_shown_once_and_saved(tmp_path):
+    engine, _ = make_engine(tmp_path)
+    assert engine.state().close_hint_shown is False
+    engine._set_close_hint_shown()
+    assert engine.state().close_hint_shown is True
+    assert Config.load(tmp_path / "config.toml").close_hint_shown is True

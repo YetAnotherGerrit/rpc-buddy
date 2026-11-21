@@ -63,9 +63,12 @@ as Discord Rich Presence through Discord's local IPC socket.
 | Game vs. music | Both published in parallel; Discord shows both, the game wins the status line — no own priority logic |
 | Unknown games | Not shown in v1 |
 | Autostart | On by default (applied when the first-run setup check is closed with Done), starts with `--background` into the tray; Flatpak: XDG Background portal |
-| Hide list | Games per Steam app, music per source (player/service); hiding only in the main window; recently seen items (session only, max 20) are offered |
+| Hide list | Games per Steam app, music per source (player/service); hidden with "Hide" on the activity card in the main window, shown again via the card or the chips under Hidden |
 | Setup check | First-run dialog, reopenable from the main window |
 | Main window size | Fixed default 600×860 for Full HD screens, capped at 90% of smaller screens |
+| Main window look | "Now on Discord" layout: activity cards like Discord's own, toggle switches, sources list, hidden chips (chosen from three mockups, 2026-11) |
+| Light / dark | No hard-coded theme: colours are derived from the system palette (incl. the accent colour) and rebuilt when the desktop switches |
+| Closing the window | Keeps running in the tray (explained in the footer); the first time, a desktop notification says how to quit. Without a tray, closing quits |
 
 ## 5. Architecture
 
@@ -228,6 +231,8 @@ All narrow, no host escape:
 - `--talk-name=org.kde.StatusNotifierWatcher` and
   `--own-name=org.kde.StatusNotifierItem-2-2` (tray; inside the sandbox the
   app's PID is always 2, Qt registers this name)
+- `--talk-name=org.freedesktop.Notifications` (the one-time "still running in
+  the tray" notification)
 
 Verified from inside the `org.kde.Platform//6.11` runtime (E5). The session
 bus must not be disabled (`flatpak run --sandbox` breaks MPRIS and the tray).
@@ -255,11 +260,25 @@ bundle replaces the old one. No automatic updates. x86_64 only so far.
 
 - **Tray** (primary on KDE): current activity, Discord status, pause toggle,
   module toggles, "Open RPC Buddy…", "Quit"; left click opens the main window.
-- **Main window**: status (Discord, what is shown, pause, autostart), one box
-  per module (enable toggle, coloured health with hints, settings form
-  generated from the module's `settings`), hide list ("Seen recently" /
-  "Hidden"), "Run setup check…", "Quit". Closing hides it to the tray (quits
-  if no tray).
+- **Main window** (`gui/window.py`), top to bottom:
+  - header with the app icon and a Discord status pill (green / amber),
+  - **Now on Discord**: one card per activity — cover (game covers from
+    Discord's CDN via `gui/covers.py`, otherwise a coloured placeholder),
+    "PLAYING · STEAM" / "LISTENING · DEEZER", title, elapsed time or song
+    progress (updated every second), **Hide** / **Show**; an empty or
+    "paused" card (with Resume) when nothing is shown,
+  - toggle switches: pause presence, start with the desktop,
+  - **Sources**: per module icon, health, ⚙ (settings dialog generated from
+    the module's `settings`) and an on/off switch,
+  - **Hidden**: chips, click to show again,
+  - fixed footer: what closing does, "Run setup check…", "Hide to tray",
+    "Quit RPC Buddy".
+  Closing hides it to the tray (quits if no tray); the first time, a desktop
+  notification explains how to quit.
+- **Look** (`gui/style.py`, `gui/widgets.py`): colours computed from the system
+  palette (window, text, accent) into a small stylesheet, re-applied when the
+  palette changes (light/dark switch). Widgets: toggle switch, wrapping row,
+  rounded cover image.
 - **Setup check** (first run, reopenable): Discord, Steam games, music, tray
   icon, autostart, plus the Spotify question — coloured status and copyable
   `flatpak override --user …` commands where something is missing; rows
@@ -320,6 +339,7 @@ then Flathub.
 - ✅ App icon for the RPC Buddy Discord app
 - ✅ Spotify opt-in with setup question
 - ✅ Single-file bundle for testers
+- ✅ Redesigned main window ("Now on Discord"), clearer close/quit
 - ⏳ Daily use and feedback from testers
 - ⏳ Before going public: review the whole history, repository description
 

@@ -18,6 +18,8 @@ DEFAULTS: dict[str, Any] = {
         "paused": False,
         # Set once the first-run setup check was closed with "Done"
         "setup_done": False,
+        # Set once the "still running in the tray" tip was shown
+        "close_hint_shown": False,
         # Start with the desktop session (applied when setup is done / changed)
         "autostart": True,
         # Hidden games / music sources: [{key = "steam:<appid>", label = "…"}]
@@ -104,6 +106,14 @@ class Config:
     @setup_done.setter
     def setup_done(self, value: bool) -> None:
         self.data["general"]["setup_done"] = value
+
+    @property
+    def close_hint_shown(self) -> bool:
+        return bool(self.data["general"].get("close_hint_shown", False))
+
+    @close_hint_shown.setter
+    def close_hint_shown(self, value: bool) -> None:
+        self.data["general"]["close_hint_shown"] = value
 
     @property
     def autostart(self) -> bool:

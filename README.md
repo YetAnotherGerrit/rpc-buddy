@@ -17,9 +17,12 @@ itself.
   if not, RPC Buddy shows it.
 - Game and music are shown **side by side**; the game wins the status line
   next to your name.
+- **Main window** shows what's on Discord right now, like Discord's own
+  activity cards — with **Hide** on each card for games or music sources you
+  want to keep private. Follows your desktop's light/dark theme.
 - **Tray icon** (KDE Plasma and other desktops with a system tray) with the
-  current activity, pause and module switches.
-- **Hide list**: hide individual games or music sources.
+  current activity, pause and module switches. Closing the window keeps RPC
+  Buddy running there; **Quit** in the window or tray menu stops it.
 - **Setup check** on first start: shows what was found and gives copyable
   commands for anything missing.
 - **Starts with your desktop session**, quietly in the tray (can be switched
@@ -67,9 +70,15 @@ Buddy starts automatically from then on.
 
 ### Privacy
 
-RPC Buddy has no servers and no tracking. The only network requests are
-downloading Discord's public game list and, through Discord, cover images
-that music players provide as web links. Your configuration stays in
+RPC Buddy has no servers and no tracking. It only connects to:
+
+- Discord's public game list (at most once a day),
+- Discord's image server, to show game covers in its window,
+- cover images that your music player itself provides as web links, to show
+  them in its window (Discord loads them as well, to show them to your
+  friends).
+
+Your configuration stays in
 `~/.var/app/io.github.YetAnotherGerrit.RpcBuddy/config/rpc-buddy/config.toml`.
 
 ## Limitations

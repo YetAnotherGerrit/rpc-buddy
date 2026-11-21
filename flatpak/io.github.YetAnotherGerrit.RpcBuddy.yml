@@ -25,6 +25,8 @@ finish-args:
   # Tray icon (inside the sandbox the app's PID is always 2)
   - --talk-name=org.kde.StatusNotifierWatcher
   - --own-name=org.kde.StatusNotifierItem-2-2
+  # Desktop notifications (e.g. "still running in the tray")
+  - --talk-name=org.freedesktop.Notifications
 
 build-options:
   env:

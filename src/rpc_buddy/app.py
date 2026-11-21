@@ -81,7 +81,23 @@ def run_gui(config: Config, background: bool) -> int:
         setup.raise_()
         setup.activateWindow()
 
-    window = MainWindow(engine, quit_app=app.quit, keep_running=has_tray, open_setup=open_setup)
+    tray = None
+
+    def first_hide() -> None:
+        tray.notify(
+            f"{APP_NAME} is still running",
+            "It keeps showing your activity on Discord. "
+            "To quit, right-click the tray icon and choose Quit.",
+        )
+        engine.set_close_hint_shown()
+
+    window = MainWindow(
+        engine,
+        quit_app=app.quit,
+        keep_running=has_tray,
+        open_setup=open_setup,
+        on_first_hide=first_hide,
+    )
     tray = Tray(engine, open_window=window.show_and_raise, quit_app=app.quit)
     bridge.state_changed.connect(window.on_state)
     bridge.state_changed.connect(tray.on_state)

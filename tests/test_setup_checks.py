@@ -29,7 +29,6 @@ def state(discord, steam=OK, music=OK):
         paused=False,
         modules=(module("steam", steam), module("mpris", music)),
         hidden=(),
-        recent=(),
         autostart=True,
     )
 
@@ -72,7 +71,6 @@ def test_disabled_module_is_info():
         paused=False,
         modules=(module("mpris", Health(HealthState.DISABLED), enabled=False),),
         hidden=(),
-        recent=(),
     )
     assert music_check(s).state is CheckState.INFO
 

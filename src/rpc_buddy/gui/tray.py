@@ -41,6 +41,9 @@ class Tray(QObject):
         self._icon.activated.connect(self._on_activated)
         self._icon.show()
 
+    def notify(self, title: str, message: str) -> None:
+        self._icon.showMessage(title, message, app_icon(), 10_000)
+
     @staticmethod
     def available() -> bool:
         return QSystemTrayIcon.isSystemTrayAvailable()

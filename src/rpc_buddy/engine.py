@@ -26,7 +26,6 @@ from rpc_buddy.paths import cache_dir
 log = logging.getLogger(__name__)
 
 MODULE_RESTART_DELAY = 30.0
-MAX_RECENT = 20
 
 
 @dataclass(frozen=True)
@@ -56,6 +55,7 @@ class ModuleStatus:
     hidden: bool
     settings: tuple[Setting, ...]
     values: dict[str, Any]
+    item: Item | None = None  # what "Hide" would hide for the current activity
 
 
 @dataclass(frozen=True)
@@ -64,10 +64,10 @@ class EngineState:
     paused: bool
     modules: tuple[ModuleStatus, ...]
     hidden: tuple[Item, ...]
-    recent: tuple[Item, ...]  # seen this session, newest first, not hidden
     autostart: bool = False  # the user wants autostart
     autostart_error: str = ""
     setup_done: bool = True
+    close_hint_shown: bool = True
 
     @property
     def shown(self) -> list[ModuleStatus]:
@@ -93,7 +93,6 @@ class Engine:
         self.sink.on_status = lambda _h: self._emit()
         self._module_classes = {cls.id: cls for cls in (modules or MODULES)}
         self._published: dict[str, Publication] = {}
-        self._recent: dict[str, Item] = {}  # insertion order = oldest first
         self._health: dict[str, Health] = {}
         self._tasks: dict[str, asyncio.Task] = {}
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -162,6 +161,9 @@ class Engine:
     def set_setup_done(self) -> None:
         self._call(self._set_setup_done)
 
+    def set_close_hint_shown(self) -> None:
+        self._call(self._set_close_hint_shown)
+
     def set_autostart(self, enabled: bool) -> None:
         self._call(self._set_autostart, enabled)
 
@@ -176,11 +178,6 @@ class Engine:
         self, module_id: str, activity: Activity | None, summary: str, item: Item | None = None
     ) -> None:
         self._published[module_id] = Publication(time.monotonic(), activity, summary, item)
-        if activity is not None and item is not None:
-            self._recent.pop(item.key, None)
-            self._recent[item.key] = item
-            while len(self._recent) > MAX_RECENT:
-                self._recent.pop(next(iter(self._recent)))
         self._recompute()
 
     def set_health(self, module_id: str, health: Health) -> None:
@@ -231,6 +228,12 @@ class Engine:
         self.config.set_hidden(item.key, item.label, hidden)
         self._save_config()
         self._recompute()
+
+    def _set_close_hint_shown(self) -> None:
+        if not self.config.close_hint_shown:
+            self.config.close_hint_shown = True
+            self._save_config()
+            self._emit()
 
     def _set_setup_done(self) -> None:
         if not self.config.setup_done:
@@ -328,20 +331,19 @@ class Engine:
                     hidden=self._is_hidden(pub),
                     settings=tuple(cls.settings),
                     values=dict(self.config.module_settings(module_id)),
+                    item=pub.item,
                 )
             )
         hidden = tuple(Item(h["key"], h["label"]) for h in self.config.hidden)
-        hidden_keys = self.config.hidden_keys
-        recent = tuple(i for i in reversed(self._recent.values()) if i.key not in hidden_keys)
         return EngineState(
             discord=self.sink.status,
             paused=self.config.paused,
             modules=tuple(modules),
             hidden=hidden,
-            recent=recent,
             autostart=self.config.autostart,
             autostart_error=self._autostart_error,
             setup_done=self.config.setup_done,
+            close_hint_shown=self.config.close_hint_shown,
         )
 
     def _emit(self) -> None:
