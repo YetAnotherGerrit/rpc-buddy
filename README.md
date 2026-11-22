@@ -6,8 +6,8 @@
 [![Platform: Linux · Flatpak](https://img.shields.io/badge/platform-Linux%20%C2%B7%20Flatpak-informational)](#requirements)
 
 Discord running as a Flatpak doesn't show what you're playing? RPC Buddy
-fixes that: your Steam games — with their official Discord names and
-artwork — and the music you listen to show up as your Discord activity again.
+fixes that: your Steam games and the music you listen to show up as your
+Discord activity again.
 
 There are lots of ways to get this working. RPC Buddy aims to be one of the
 easiest: install it, start it once, done.
