@@ -1,0 +1,66 @@
+name: 🎵 Music player not detected
+description: Music from a player or website doesn't show up
+labels: ["music-player"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        RPC Buddy reads music from **MPRIS**, the standard way Linux players announce what's playing. It only shows players and music websites it knows — the information below is what's needed to add yours.
+        (Spotify is off by default — see "Include Spotify" in the Music settings.)
+  - type: input
+    id: player
+    attributes:
+      label: Player or website
+      placeholder: e.g. "Example Player" (app) or "music.example.com in Firefox"
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How do you play music with it?
+      options:
+        - Desktop app (Flatpak)
+        - Desktop app (package)
+        - Website in a browser
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: content
+    attributes:
+      label: What do you play with it?
+      options:
+        - Music
+        - Podcasts / audiobooks
+        - Video
+        - A mix
+  - type: textarea
+    id: mpris
+    attributes:
+      label: MPRIS players
+      description: |
+        While the music plays, run this in a terminal and paste the output (it lists the names players use on the session bus):
+        ```
+        busctl --user list --no-pager | grep -o 'org\.mpris\.MediaPlayer2\.[^ ]*'
+        ```
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: RPC Buddy version
+      description: "`flatpak run io.github.YetAnotherGerrit.RpcBuddy --version`"
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else?
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I checked the information above and removed anything I don't want to share publicly.
+          required: true

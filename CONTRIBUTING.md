@@ -3,18 +3,20 @@
 Thanks for your interest! RPC Buddy is a small project; bug reports, ideas and
 pull requests are welcome.
 
-## Reporting a bug
+## Reporting a bug or an idea
 
-Open an [issue](https://github.com/YetAnotherGerrit/rpc-buddy/issues) and include:
+[Open an issue](https://github.com/YetAnotherGerrit/rpc-buddy/issues/new/choose)
+and pick a template — they ask for everything that's needed:
 
-- your desktop (e.g. KDE Plasma, GNOME) and how Discord and Steam are installed
-  (Flatpak or not),
-- what the setup check shows (main window → **Run setup check…**),
-- if possible, the output of
-  `flatpak run io.github.YetAnotherGerrit.RpcBuddy --debug`.
+- **Bug report** — something doesn't work as expected
+- **Game not shown** — a Steam game doesn't show up on Discord
+- **Music player not detected** — music from a player or website doesn't show up
+- **Idea / new source** — improvements and new sources (launchers, players, …)
 
-The debug output can contain game names, song titles and file paths — please
-look through it and remove anything you don't want to share.
+Debug output (`flatpak run io.github.YetAnotherGerrit.RpcBuddy --debug`) can
+contain game names, song titles and file paths — please look through it and
+remove anything you don't want to share. Security problems don't belong in
+issues — see [SECURITY.md](SECURITY.md).
 
 ## Development setup
 

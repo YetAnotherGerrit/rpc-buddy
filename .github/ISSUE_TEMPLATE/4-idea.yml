@@ -1,0 +1,38 @@
+name: 💡 Idea / new source
+description: Suggest an improvement or a new source (launcher, player, …)
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of idea?
+      options:
+        - New source (e.g. another game launcher or player)
+        - Improvement to an existing feature
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why — what would it help you with?
+  - type: textarea
+    id: source
+    attributes:
+      label: For a new source — where does the information come from?
+      description: How does the program tell what's running or playing? e.g. a log file, D-Bus / MPRIS, a local file or API.
+  - type: dropdown
+    id: privacy-impact
+    attributes:
+      label: Would it need network access or new sandbox permissions?
+      description: RPC Buddy has no servers and keeps its permissions narrow, so this matters.
+      options:
+        - "No"
+        - Yes (please explain above)
+        - Not sure

@@ -154,7 +154,9 @@ Open the main window (tray icon, or start RPC Buddy again) and click
 ## Contributing and security
 
 Bug reports and ideas are welcome as
-[issues](https://github.com/YetAnotherGerrit/rpc-buddy/issues).
+[issues](https://github.com/YetAnotherGerrit/rpc-buddy/issues/new/choose) —
+templates for bugs, games that aren't shown, undetected music players and
+ideas ask for what's needed.
 [CONTRIBUTING.md](CONTRIBUTING.md) explains how to report bugs, set up a
 development environment, run the tests and build test bundles; the design and
 the reasons behind decisions are in [DESIGN.md](DESIGN.md). Please report

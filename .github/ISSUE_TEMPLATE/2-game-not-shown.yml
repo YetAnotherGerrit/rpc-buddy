@@ -1,0 +1,71 @@
+name: 🎮 Game not shown
+description: A Steam game doesn't show up on Discord
+labels: ["game-detection"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        RPC Buddy shows a game under its **official Discord identity**, so it only works for games that Discord itself knows. If the Steam row in RPC Buddy says the game is *unknown to Discord*, that's a known limitation — reporting it still helps to see how often it happens.
+  - type: input
+    id: game
+    attributes:
+      label: Game and Steam app ID
+      description: "The app ID is the number in the game's Steam store address: `store.steampowered.com/app/<ID>/…`"
+      placeholder: Example Quest — 1000001
+    validations:
+      required: true
+  - type: dropdown
+    id: shown-in-rpc-buddy
+    attributes:
+      label: What does RPC Buddy's main window show while the game runs?
+      options:
+        - The game doesn't appear at all
+        - It appears dimmed ("Not on Discord — …")
+        - It appears normally, but Discord doesn't show it
+    validations:
+      required: true
+  - type: input
+    id: steam-row
+    attributes:
+      label: What does the Steam row say? (main window → Sources → Steam)
+      placeholder: e.g. "Steam app 1000001 is unknown to Discord"
+  - type: dropdown
+    id: steam-status
+    attributes:
+      label: Your Steam status while playing
+      options:
+        - Online
+        - Invisible
+        - Offline
+        - Away / Busy
+        - Not sure
+  - type: dropdown
+    id: steam-install
+    attributes:
+      label: How is Steam installed?
+      options:
+        - Package (native)
+        - Flatpak
+        - Somewhere unusual (I chose the Steam folder in RPC Buddy)
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: RPC Buddy version
+      description: "`flatpak run io.github.YetAnotherGerrit.RpcBuddy --version`"
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else?
+      description: Screenshots of RPC Buddy's window help. Optional debug output (`--debug`) can contain names and paths — remove what you don't want to share.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I checked the information above and removed anything I don't want to share publicly.
+          required: true
