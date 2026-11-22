@@ -13,7 +13,7 @@ jobs:
     env:
       QT_QPA_PLATFORM: offscreen  # no display on the runner
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install libraries Qt needs (even without a display)
         run: |
@@ -21,7 +21,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libegl1 libgl1 libglib2.0-0t64 libxkbcommon0 libfontconfig1 libdbus-1-3
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
 
       - name: Install dependencies (Python version from .python-version)
         run: uv sync --locked
