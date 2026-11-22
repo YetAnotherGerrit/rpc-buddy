@@ -5,9 +5,12 @@
 [![License: GPL-3.0](https://img.shields.io/github/license/YetAnotherGerrit/rpc-buddy)](LICENSE)
 [![Platform: Linux · Flatpak](https://img.shields.io/badge/platform-Linux%20%C2%B7%20Flatpak-informational)](#requirements)
 
-Shows what you play and listen to on Linux as your Discord activity —
-built for setups where Discord runs as a Flatpak and cannot detect games
-itself.
+Discord running as a Flatpak doesn't show what you're playing? RPC Buddy
+fixes that: your Steam games — with their official Discord names and
+artwork — and the music you listen to show up as your Discord activity again.
+
+There are lots of ways to get this working. RPC Buddy aims to be one of the
+easiest: install it, start it once, done.
 
 **Status:** early development — test builds are on the
 [Releases page](https://github.com/YetAnotherGerrit/rpc-buddy/releases); not
