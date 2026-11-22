@@ -21,14 +21,34 @@ look through it and remove anything you don't want to share.
 You need [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv sync                 # Python 3.13 and all dependencies in .venv
-uv run rpc-buddy        # run the app
-uv run pytest           # tests
+uv sync                               # Python 3.13 and all dependencies in .venv
+uv run rpc-buddy                      # run with window and tray icon
+uv run rpc-buddy --headless --debug   # run without GUI, verbose logging
+uv run pytest                         # tests
 uv run ruff check . && uv run ruff format --check .
 ```
 
-Building and installing the Flatpak is described in the [README](README.md);
-the design and the reasons behind decisions are in [DESIGN.md](DESIGN.md).
+Every push and pull request runs lint and tests on GitHub
+(`.github/workflows/ci.yml`).
+
+Building and installing the Flatpak is described in the
+[README](README.md#build-it-yourself). To create a single-file bundle for
+testers (see [DESIGN.md §8.3](DESIGN.md#83-test-builds-for-friends)):
+
+```bash
+flatpak-builder --repo=repo --force-clean build-dir flatpak/io.github.YetAnotherGerrit.RpcBuddy.yml
+flatpak build-bundle repo rpc-buddy.flatpak io.github.YetAnotherGerrit.RpcBuddy \
+    --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+```
+
+Regenerate the screenshots in `docs/screenshots/` (made-up content only):
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python tools/make_screenshots.py
+```
+
+The design, decisions and test results are in [DESIGN.md](DESIGN.md); ideas
+for later in [FUTURE_IDEAS.md](FUTURE_IDEAS.md).
 
 ## Ground rules
 

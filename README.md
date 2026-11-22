@@ -151,44 +151,14 @@ Open the main window (tray icon, or start RPC Buddy again) and click
 - **Logs**: run `flatpak run io.github.YetAnotherGerrit.RpcBuddy --debug` in a
   terminal.
 
-## Development
-
-Requires [uv](https://docs.astral.sh/uv/).
-
-```bash
-uv sync                               # .venv with Python 3.13 and all dependencies
-uv run rpc-buddy                      # run with window and tray icon
-uv run rpc-buddy --headless --debug   # run without GUI, verbose logging
-uv run pytest                         # tests
-uv run ruff check . && uv run ruff format --check .
-```
-
-Create a single-file bundle for testers (see DESIGN.md §8.3):
-
-```bash
-flatpak-builder --repo=repo --force-clean build-dir flatpak/io.github.YetAnotherGerrit.RpcBuddy.yml
-flatpak build-bundle repo rpc-buddy.flatpak io.github.YetAnotherGerrit.RpcBuddy \
-    --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
-```
-
-Regenerate the screenshots (made-up content only):
-
-```bash
-QT_QPA_PLATFORM=offscreen uv run python tools/make_screenshots.py
-```
-
-Every push runs lint and tests on GitHub (`.github/workflows/ci.yml`).
-
-The design, decisions and test results are in [DESIGN.md](DESIGN.md);
-ideas for later in [FUTURE_IDEAS.md](FUTURE_IDEAS.md). New sources are
-added as modules — see `src/rpc_buddy/module.py`.
-
 ## Contributing and security
 
 Bug reports and ideas are welcome as
-[issues](https://github.com/YetAnotherGerrit/rpc-buddy/issues) — see
-[CONTRIBUTING.md](CONTRIBUTING.md). Please report security problems
-privately, as described in [SECURITY.md](SECURITY.md).
+[issues](https://github.com/YetAnotherGerrit/rpc-buddy/issues).
+[CONTRIBUTING.md](CONTRIBUTING.md) explains how to report bugs, set up a
+development environment, run the tests and build test bundles; the design and
+the reasons behind decisions are in [DESIGN.md](DESIGN.md). Please report
+security problems privately, as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
