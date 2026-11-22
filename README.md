@@ -1,6 +1,9 @@
 # RPC Buddy
 
 [![CI](https://github.com/YetAnotherGerrit/rpc-buddy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/YetAnotherGerrit/rpc-buddy/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/YetAnotherGerrit/rpc-buddy)](https://github.com/YetAnotherGerrit/rpc-buddy/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/github/license/YetAnotherGerrit/rpc-buddy)](LICENSE)
+[![Platform: Linux · Flatpak](https://img.shields.io/badge/platform-Linux%20%C2%B7%20Flatpak-informational)](#requirements)
 
 Shows what you play and listen to on Linux as your Discord activity —
 built for setups where Discord runs as a Flatpak and cannot detect games
