@@ -1,5 +1,7 @@
 # RPC Buddy
 
+[![CI](https://github.com/YetAnotherGerrit/rpc-buddy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/YetAnotherGerrit/rpc-buddy/actions/workflows/ci.yml)
+
 Shows what you play and listen to on Linux as your Discord activity —
 built for setups where Discord runs as a Flatpak and cannot detect games
 itself.
