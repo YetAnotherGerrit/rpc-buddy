@@ -5,7 +5,7 @@
   <summary>Show what you play and listen to as Discord Rich Presence</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <developer id="io.github.YetAnotherGerrit">
+  <developer id="io.github.yetanothergerrit">
     <name>YetAnotherGerrit</name>
   </developer>
   <description>
@@ -21,11 +21,24 @@
   </description>
   <launchable type="desktop-id">io.github.YetAnotherGerrit.RpcBuddy.desktop</launchable>
   <url type="homepage">https://github.com/YetAnotherGerrit/rpc-buddy</url>
+  <url type="bugtracker">https://github.com/YetAnotherGerrit/rpc-buddy/issues</url>
+  <url type="vcs-browser">https://github.com/YetAnotherGerrit/rpc-buddy</url>
+  <url type="contribute">https://github.com/YetAnotherGerrit/rpc-buddy/blob/main/CONTRIBUTING.md</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Your games and music, as Discord shows them</caption>
+      <image>https://raw.githubusercontent.com/YetAnotherGerrit/rpc-buddy/v0.1.0/docs/screenshots/main-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Follows your desktop's dark theme</caption>
+      <image>https://raw.githubusercontent.com/YetAnotherGerrit/rpc-buddy/v0.1.0/docs/screenshots/main-dark.png</image>
+    </screenshot>
+  </screenshots>
   <content_rating type="oars-1.1"/>
   <releases>
-    <release version="0.1.0" date="2026-11-19">
+    <release version="0.1.0" date="2026-11-22">
       <description>
-        <p>First development version.</p>
+        <p>First public test version.</p>
       </description>
     </release>
   </releases>

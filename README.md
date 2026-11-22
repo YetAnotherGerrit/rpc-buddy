@@ -4,7 +4,17 @@ Shows what you play and listen to on Linux as your Discord activity —
 built for setups where Discord runs as a Flatpak and cannot detect games
 itself.
 
-**Status:** early development. Not on Flathub yet; build it locally (see below).
+**Status:** early development — test builds are on the
+[Releases page](https://github.com/YetAnotherGerrit/rpc-buddy/releases); not
+on Flathub yet.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/main-dark.png">
+    <img src="docs/screenshots/main-light.png" width="420"
+         alt="RPC Buddy's main window: a Steam game and a song shown as Discord activities, with Hide buttons, toggles and the sources list">
+  </picture>
+</p>
 
 ## Features
 
@@ -45,17 +55,20 @@ itself.
   Troubleshooting).
 - Steam (native or Flatpak) for game detection
 
-## Install a test build
+## Install
 
-If you got a `rpc-buddy.flatpak` file:
+Download `rpc-buddy.flatpak` from the
+[latest release](https://github.com/YetAnotherGerrit/rpc-buddy/releases/latest)
+and install it (the KDE runtime is fetched from Flathub automatically):
 
 ```bash
 flatpak install --user rpc-buddy.flatpak
 ```
 
-A newer file is installed the same way and replaces the old version.
+A newer release is installed the same way and replaces the old version.
+There are no automatic updates yet.
 
-## Install (local build)
+### Build it yourself
 
 ```bash
 flatpak install --user flathub org.kde.Sdk//6.11 io.qt.PySide.BaseApp//6.11
@@ -158,9 +171,24 @@ flatpak build-bundle repo rpc-buddy.flatpak io.github.YetAnotherGerrit.RpcBuddy 
     --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
+Regenerate the screenshots (made-up content only):
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python tools/make_screenshots.py
+```
+
+Every push runs lint and tests on GitHub (`.github/workflows/ci.yml`).
+
 The design, decisions and test results are in [DESIGN.md](DESIGN.md);
 ideas for later in [FUTURE_IDEAS.md](FUTURE_IDEAS.md). New sources are
 added as modules — see `src/rpc_buddy/module.py`.
+
+## Contributing and security
+
+Bug reports and ideas are welcome as
+[issues](https://github.com/YetAnotherGerrit/rpc-buddy/issues) — see
+[CONTRIBUTING.md](CONTRIBUTING.md). Please report security problems
+privately, as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

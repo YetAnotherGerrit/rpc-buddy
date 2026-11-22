@@ -344,6 +344,9 @@ bundle replaces the old one. No automatic updates. x86_64 only so far.
   > things on the immutable host.
 - Packaging/real-world test: `flatpak-builder --user --install` on the host
   (some distributions ship it; also available as the `org.flatpak.Builder` Flatpak).
+- CI: `.github/workflows/ci.yml` runs ruff and pytest on Ubuntu 24.04 for
+  every push and pull request (Qt needs a few system libraries even without a
+  display; `QT_QPA_PLATFORM=offscreen`).
 - Tests: `pytest` (parsers, selector, engine rules, sink, cache, config,
   setup checks — no Discord needed); lint/format with `ruff`.
 - Repo hygiene: no real game/song titles, their IDs or real play times in
@@ -400,7 +403,11 @@ then Flathub.
 - ✅ Pause shows a preview of the activities (hide before publishing)
 - ✅ Security review (§13) and performance tuning (§14)
 - ⏳ Daily use and feedback from testers
-- ⏳ Before going public: review the whole history, repository description
+- ✅ Prepared for GitHub (2026-11-22): history reviewed (no personal data,
+  secrets or real titles in any commit), CI workflow, README screenshots
+  (`tools/make_screenshots.py`, made-up content), CONTRIBUTING.md,
+  SECURITY.md, installation via GitHub Releases
+- ⏳ Push to GitHub, make it public, release `v0.1.0` with the bundle
 - ⏳ Before publishing on Flathub — store listing (`flatpak/*.metainfo.xml`):
   - **Description tone (wanted):** start from the user's problem, casual and
     honest, e.g. *"You run Discord as a Flatpak and it doesn't show the game
@@ -411,12 +418,12 @@ then Flathub.
     Invisible status).
   - Shorter summary (~35 characters), e.g. "Show your games and music on
     Discord".
-  - Screenshots (required by Flathub) with captions, made with made-up games
-    and songs, light and dark, hosted in the public repo.
-  - `developer id` in lowercase (`io.github.yetanothergerrit`); links for
-    bug tracker and source code; `<branding>` colours; check the OARS age
-    rating (sharing activity with Discord → `social-info`?); release notes per
-    version.
+  - ✅ Screenshots with captions (light and dark, made-up content) — in the
+    metainfo, pointing to the `v0.1.0` tag in the public repo.
+  - ✅ `developer id` in lowercase; links for bug tracker, source code and
+    contributing.
+  - `<branding>` colours; check the OARS age rating (sharing activity with
+    Discord → `social-info`?); release notes per version.
   - Run `appstreamcli validate --pedantic` and Flathub's
     `flatpak-builder-lint` (via `org.flatpak.Builder`).
 
