@@ -411,7 +411,8 @@ then Flathub.
   secrets or real titles in any commit), CI workflow, README screenshots
   (`tools/make_screenshots.py`, made-up content), CONTRIBUTING.md,
   SECURITY.md, installation via GitHub Releases
-- ⏳ Push to GitHub, make it public, release `v0.1.0` with the bundle
+- ✅ Pushed to GitHub, public, released `v0.1.0` (2026-11-22) and `v0.1.1`
+  (2026-11-24) with the bundle
 - ⏳ Before publishing on Flathub — store listing (`flatpak/*.metainfo.xml`):
   - **Description tone (wanted):** start from the user's problem, casual and
     honest, e.g. *"You run Discord as a Flatpak and it doesn't show the game
