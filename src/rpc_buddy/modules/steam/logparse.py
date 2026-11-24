@@ -11,6 +11,11 @@ import re
 import time
 from dataclasses import dataclass
 
+# Steam doesn't log "removed" if it crashes or the PC is switched off while a
+# game runs; the old log then claims the game is still running. Treat games
+# that "run" for longer than this as stopped.
+MAX_RUNNING = 12 * 3600
+
 _LINE_RE = re.compile(
     r"^\[(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] "
     r"Game process (?P<kind>added|updated|removed)\s*: AppID (?P<appid>\d+)\b"
@@ -39,7 +44,10 @@ class RunningGame:
 
 
 class GameTracker:
-    """Keeps track of running games; the most recently started one wins."""
+    """Keeps track of running games; the most recently started one wins.
+
+    Games started more than MAX_RUNNING seconds ago are ignored (see above).
+    """
 
     def __init__(self) -> None:
         self._running: dict[str, int] = {}
@@ -53,8 +61,10 @@ class GameTracker:
         else:
             self._running.setdefault(event.appid, event.timestamp)
 
-    def current(self) -> RunningGame | None:
-        if not self._running:
+    def current(self, now: float | None = None) -> RunningGame | None:
+        cutoff = (time.time() if now is None else now) - MAX_RUNNING
+        running = {a: t for a, t in self._running.items() if t >= cutoff}
+        if not running:
             return None
-        appid = max(self._running, key=lambda a: self._running[a])
-        return RunningGame(appid, self._running[appid])
+        appid = max(running, key=lambda a: running[a])
+        return RunningGame(appid, running[appid])

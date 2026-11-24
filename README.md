@@ -119,6 +119,8 @@ Your configuration stays in
   RPC Buddy deliberately doesn't look covers up online — that would send what
   you listen to to a third party.
 - Only the official Discord clients are supported.
+- A game is shown for at most 12 hours per session. This stops a game from
+  "running" forever when Steam crashed before noticing the game had ended.
 
 ## Troubleshooting
 

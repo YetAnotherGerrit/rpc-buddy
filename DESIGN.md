@@ -142,6 +142,10 @@ as Discord Rich Presence through Discord's local IPC socket.
   On start, the whole current log is replayed to find a game that is already
   running. A new log (Steam restart, detected by inode/size) resets the
   state. With several games running, the most recently started one is shown.
+  If Steam crashes or the PC is switched off while a game runs, the log never
+  gets a "removed" line; so a game that "runs" for more than 12 hours
+  (hardcoded `MAX_RUNNING`) is treated as stopped. Simple first fix — real
+  sessions over 12 hours lose their status too.
 - Steam roots probed: the folder from the setting "Steam folder" (if set —
   typed, or chosen via the desktop's file dialog, then a
   `/run/user/<uid>/doc/<id>/…` path), then `~/.local/share/Steam`, `~/.steam/steam`,
